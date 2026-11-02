@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPR Solutions · Plataforma Patrimonial v2.3</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#16294B;--steel:#8FA3BF;--sky:#A8C6E8;--pale:#EAF1F8;--slate:#55606E;--bone:#F7F5F0;--green:#3A7D44;--red:#B3402E;--mid:#3A5A78}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Aptos','Calibri','Segoe UI','Helvetica Neue',sans-serif;background:var(--bone);color:var(--navy);font-size:15px;line-height:1.45}
+.screen{display:none;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy) 0%,#0d1a33 100%)}
+.screen.active{display:flex}
+.panel{background:#fff;border-radius:14px;padding:36px 40px;width:min(440px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.panel h1{text-align:center;font-size:24px;letter-spacing:.35em;font-weight:600}
+.sub{text-align:center;font-size:11px;letter-spacing:.45em;color:var(--steel);margin:4px 0 6px;text-transform:uppercase}
+.motto{text-align:center;font-size:12px;color:var(--slate);font-style:italic;margin-bottom:22px}
+.field{margin-bottom:14px}
+label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);margin-bottom:5px;font-weight:600}
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--steel);border-radius:8px;font-size:15px;font-family:inherit;background:#fff;color:var(--navy)}
+input:focus,textarea:focus{outline:2px solid var(--sky)}
+button{cursor:pointer;border:none;border-radius:8px;padding:11px 18px;font-size:15px;font-family:inherit;font-weight:600;transition:filter .15s}
+button:hover{filter:brightness(1.08)}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-secondary{background:var(--pale);color:var(--navy);border:1px solid var(--sky)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.linklike{background:none;color:var(--mid);text-decoration:underline;font-weight:400;font-size:13px;padding:4px}
+.small-note{font-size:12px;color:var(--slate);margin-top:10px}
+.secret-box{background:var(--pale);border:1px dashed var(--steel);border-radius:8px;padding:10px;font-family:monospace;font-size:14px;word-break:break-all;text-align:center;margin:10px 0;color:var(--navy)}
+.error-msg{background:#fbeae7;color:var(--red);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:13px;margin-bottom:12px;display:none}
+#app{display:none;min-height:100vh}
+#app.active{display:block}
+header{background:var(--navy);color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand .gpr{font-size:20px;font-weight:700;letter-spacing:.12em}
+.brand .sol{font-size:10px;letter-spacing:.42em;color:var(--sky)}
+.userbox{display:flex;align-items:center;gap:14px;font-size:13px}
+.initials-badge{width:36px;height:36px;border-radius:50%;background:var(--sky);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border:2px solid #fff}
+nav.tabs{display:flex;background:#fff;border-bottom:2px solid var(--pale);overflow-x:auto;position:sticky;top:64px;z-index:40}
+nav.tabs button{background:none;color:var(--slate);padding:14px 20px;font-weight:600;font-size:14px;border-bottom:3px solid transparent;white-space:nowrap;border-radius:0}
+nav.tabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
+main{max-width:1080px;margin:0 auto;padding:28px 24px 80px}
+.tabpane{display:none}.tabpane.on{display:block}
+h2.ptitle{font-size:22px;margin-bottom:2px}
+.pdesc{font-size:13px;color:var(--slate);margin-bottom:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cardrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:24px}
+.kcard{background:#fff;border-radius:12px;padding:18px 16px;border-top:4px solid var(--navy);box-shadow:0 2px 8px rgba(22,41,75,.07);text-align:center}
+.kcard.k-blue{border-top-color:var(--mid)}.kcard.k-sky{border-top-color:var(--sky)}
+.kcard.k-red{border-top-color:var(--red)}.kcard.k-green{border-top-color:var(--green)}
+.klabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);font-weight:700}
+.kvalue{font-size:22px;font-weight:700;margin:6px 0 2px;white-space:nowrap}
+.ksub{font-size:12px;color:var(--slate);white-space:normal;line-height:1.5}
+.ksub b{font-weight:600}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.widget{background:#fff;border-radius:12px;padding:22px 24px;margin-bottom:24px;box-shadow:0 2px 8px rgba(22,41,75,.07);overflow:hidden}
+.widget h3{font-size:15px;margin-bottom:16px;letter-spacing:.03em}
+canvas.chart{width:100%;display:block}
+.chart-tip{position:fixed;background:var(--navy);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:99;white-space:nowrap}
+table.data{width:100%;border-collapse:collapse;font-size:13px}
+table.data th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);padding:8px 10px;border-bottom:2px solid var(--pale)}
+table.data th.num-h{text-align:right}
+table.data td{padding:9px 10px;border-bottom:1px solid var(--pale)}
+table.data td.num{text-align:right;white-space:nowrap}
+table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;background:var(--pale)}
+.toolrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end}
+.toolrow .field{margin:0;flex:1;min-width:120px}
+.goal-item{border-left:4px solid var(--sky);background:var(--pale);border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:12px}
+.bitacora-entry{border:1px solid var(--pale);border-left:4px solid var(--mid);border-radius:0 10px 10px 0;padding:16px 18px;margin-bottom:14px;white-space:pre-wrap}
+.bitacora-entry .date{font-size:11px;color:var(--slate);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.close-list li{margin-bottom:8px;font-size:14px;list-style:none}
+.tagpill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;color:#fff}
+.modal-bg{position:fixed;inset:0;background:rgba(13,26,51,.55);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:14px;padding:28px 30px;width:min(480px,92vw)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;z-index:200;max-width:340px}
+.sec-title{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin:26px 0 12px;font-weight:700}
+.legend-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.delx{background:none;color:var(--red);font-weight:700;padding:2px 8px;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ACCESO -->
+<div class="screen active" id="scr-auth"><div class="panel">
+  <h1>GPR</h1><div class="sub">Solutions</div>
+  <div class="motto">«Mirar lejos, pisar firme.»</div>
+  <div class="error-msg" id="authErr"></div>
+  <div id="loginForm">
+    <div class="field"><label>Correo electrónico</label><input type="email" id="liEmail"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="liPass"></div>
+    <button class="btn-primary" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
+    <div class="small-note" style="text-align:center">¿Primera vez? <button class="linklike" onclick="showRegister()">Crear cuenta nueva</button></div>
+  </div>
+  <div id="regForm" style="display:none">
+    <div class="field"><label>Correo electrónico</label><input type="email" id="rgEmail"></div>
+    <div class="field"><label>Contraseña (mínimo 8 caracteres)</label><input type="password" id="rgPass"></div>
+    <div class="field"><label>Repita la contraseña</label><input type="password" id="rgPass2"></div>
+    <button class="btn-green" style="width:100%" onclick="doRegister()">Registrar</button>
+    <div class="small-note" style="text-align:center"><button class="linklike" onclick="showLogin()">← Volver al inicio de sesión</button></div>
+  </div>
+</div></div>
+
+<!-- 2FA LOGIN -->
+<div class="screen" id="scr-mfa"><div class="panel">
+  <h1>GPR</h1><div class="sub">Solutions</div>
+  <div class="motto">Doble factor · Proton Authenticator</div>
+  <div class="error-msg" id="mfaErr"></div>
+  <div class="field"><label>Código de 6 dígitos</label><input type="text" id="mfaCode" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;font-size:22px;letter-spacing:.3em"></div>
+  <button class="btn-primary" style="width:100%" onclick="verifyMFA()">Verificar</button>
+</div></div>
+
+<!-- ALTA 2FA -->
+<div class="screen" id="scr-enroll"><div class="panel">
+  <h1>GPR</h1><div class="sub">Solutions</div>
+  <div class="motto">Active su doble factor</div>
+  <p style="font-size:13px;color:var(--slate);margin-bottom:8px">Abra <b>Proton Authenticator</b> → «+» → «Introducir clave manualmente» y copie esta clave secreta:</p>
+  <div class="secret-box" id="enrollSecret"></div>
+  <div class="error-msg" id="enrollErr"></div>
+  <div class="field"><label>Código generado (6 dígitos)</label><input type="text" id="enrollCode" inputmode="numeric" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:.25em"></div>
+  <button class="btn-green" style="width:100%" onclick="confirmEnroll()">Activar y verificar</button>
+</div></div>
+
+<!-- CONTRASEÑA MAESTRA (solo asesor) -->
+<div class="screen" id="scr-master"><div class="panel">
+  <h1>GPR</h1><div class="sub">Solutions</div>
+  <div class="motto">Bóveda cifrada de extremo a extremo</div>
+  <p style="font-size:13px;color:var(--slate)" id="masterDesc"></p>
+  <div class="error-msg" id="masterErr"></div>
+  <div class="field"><label>Contraseña maestra</label><input type="password" id="mpass1"></div>
+  <div class="field" id="mpass2row"><label>Repita la contraseña maestra</label><input type="password" id="mpass2"></div>
+  <button class="btn-primary" style="width:100%" id="masterBtn" onclick="submitMaster()">Continuar</button>
+  <div class="small-note" style="text-align:center">La contraseña maestra cifra sus datos en su navegador: nadie puede recuperarla por usted. Guárdela en papel.</div>
+</div></div>
+
+<!-- APP -->
+<div id="app">
+<header>
+  <div class="brand"><span class="gpr">GPR</span><span class="sol">S O L U T I O N S</span></div>
+  <div class="userbox">
+    <span class="initials-badge" id="hdrInitials">GP</span>
+    <span id="hdrRole"></span>
+    <button class="btn-secondary" style="padding:8px 14px;font-size:13px" onclick="doLogout()">Salir</button>
+  </div>
+</header>
+<nav class="tabs" id="tabbar"></nav>
+<main>
+  <section class="tabpane" id="tab-resumen">
+    <h2 class="ptitle">Resumen</h2>
+    <p class="pdesc">Panorama general con los últimos datos registrados. Variaciones en verde o rojo financiero, conforme al manual de identidad.</p>
+    <div class="cardrow" id="sumCards"></div>
+    <div class="widget"><h3>Peso por grupos (sobre el activo total)</h3><canvas class="chart" id="cvGroups"></canvas><div id="lgGroups"></div></div>
+    <div class="widget"><h3>Composición por posición</h3><canvas class="chart" id="cvComp"></canvas></div>
+  </section>
+
+  <section class="tabpane" id="tab-objetivos">
+    <h2 class="ptitle">Objetivos y Recomendaciones</h2>
+    <p class="pdesc">Metas financieras personales y cuaderno de bitácora mensual con la valoración del asesor.</p>
+    <div class="widget"><h3>Objetivos financieros (máximo 7)</h3>
+      <div id="goalsList"></div>
+      <div class="toolrow">
+        <div class="field"><label>Objetivo</label><input id="goalText" placeholder="Ej.: Fondo de emergencia completo"></div>
+        <div class="field" style="max-width:140px"><label>Importe (€)</label><input id="goalAmt" type="number" step="0.01" min="0"></div>
+        <div class="field" style="max-width:150px"><label>Plazo</label><input id="goalDate" type="month"></div>
+        <button class="btn-primary" style="height:42px" onclick="addGoal()">Añadir</button>
+      </div>
+    </div>
+    <div class="widget"><h3>Cuaderno de bitácora</h3>
+      <div class="field"><label>Nueva entrada (valoración de máx. 10 líneas de Lumo)</label><textarea id="bitText" rows="4" placeholder="Pegue aquí la valoración mensual de Lumo…"></textarea></div>
+      <div class="toolrow">
+        <div class="field" style="max-width:170px"><label>Fecha</label><input type="date" id="bitDate"></div>
+        <button class="btn-primary" onclick="addBitacora()">Guardar entrada</button>
+      </div>
+      <div id="bitList"></div>
+    </div>
+  </section>
+
+  <section class="tabpane" id="tab-cartera">
+    <h2 class="ptitle">Posiciones en cartera</h2>
+    <p class="pdesc">Gestione los activos vigentes: fondos indexados, metales y cuentas remuneradas.</p>
+    <div class="widget">
+      <div class="toolrow">
+        <div class="field"><label>Nombre</label><input id="posName" placeholder="Ej.: MSCI World (Fidelity)"></div>
+        <div class="field" style="max-width:160px"><label>Grupo</label><select id="posGroup"></select></div>
+        <div class="field" style="max-width:120px"><label>Invertido (€)</label><input id="posInv" type="number" step="0.01"></div>
+        <div class="field" style="max-width:120px"><label>Valor actual (€)</label><input id="posVal" type="number" step="0.01"></div>
+        <div class="field" style="max-width:100px"><label>Aport./mes (€)</label><input id="posMes" type="number" step="0.01"></div>
+        <button class="btn-primary" style="height:42px" onclick="addPosition()">+ Nueva posición</button>
+      </div>
+      <div style="overflow-x:auto"><table class="data" id="posTable"></table></div>
+    </div>
+    <div class="widget"><h3>Liquidez bancaria (fuera de cartera)</h3>
+      <div class="toolrow">
+        <div class="field"><label>Entidad</label><input id="cashName" placeholder="Ej.: CaixaBank"></div>
+        <div class="field" style="max-width:140px"><label>Saldo (€)</label><input id="cashVal" type="number" step="0.01"></div>
+        <button class="btn-primary" style="height:42px" onclick="addCash()">+ Añadir</button>
+      </div>
+      <div style="overflow-x:auto"><table class="data" id="cashTable"></table></div>
+    </div>
+    <div class="widget"><h3>Deuda pendiente</h3>
+      <div class="toolrow">
+        <div class="field"><label>Concepto</label><input id="debtName" placeholder="Ej.: Préstamo BBVA"></div>
+        <div class="field" style="max-width:140px"><label>Capital pendiente (€)</label><input id="debtVal" type="number" step="0.01"></div>
+        <div class="field" style="max-width:130px"><label>Cuota (€/mes)</label><input id="debtFee" type="number" step="0.01"></div>
+        <button class="btn-primary" style="height:42px" onclick="addDebt()">+ Añadir</button>
+      </div>
+      <div style="overflow-x:auto"><table class="data" id="debtTable"></table></div>
+    </div>
+  </section>
+
+  <section class="tabpane" id="tab-movimientos">
+    <h2 class="ptitle">Movimientos</h2>
+    <p class="pdesc">Diario de aportaciones, ventas y variaciones patrimoniales registradas.</p>
+    <div class="widget">
+      <div class="toolrow">
+        <div class="field" style="max-width:150px"><label>Fecha</label><input type="date" id="mvDate"></div>
+        <div class="field" style="max-width:160px"><label>Tipo</label><select id="mvType"><option>Aportación</option><option>Venta</option><option>Compra</option><option>Amortización deuda</option><option>Regularización valor</option></select></div>
+        <div class="field"><label>Detalle</label><input id="mvDesc" placeholder="Ej.: Aportación MSCI World"></div>
+        <div class="field" style="max-width:130px"><label>Importe (€)</label><input id="mvAmt" type="number" step="0.01"></div>
+        <button class="btn-primary" style="height:42px" onclick="addMov()">Registrar</button>
+      </div>
+      <div style="overflow-x:auto"><table class="data" id="movTable"></table></div>
+    </div>
+  </section>
+
+  <section class="tabpane" id="tab-historial">
+    <h2 class="ptitle">Historial</h2>
+    <p class="pdesc">Series temporales de cierres mensuales y rentabilidad mes a mes.</p>
+    <div class="widget"><h3>Serie histórica gráfica</h3><canvas class="chart" id="cvSerie"></canvas><p class="small-note" id="serieNote"></p></div>
+    <div class="widget"><h3>Serie histórica rentabilidad mensual</h3><canvas class="chart" id="cvReturns"></canvas><p class="small-note" id="retNote"></p></div>
+    <div class="widget"><h3>Cierres registrados</h3>
+      <div class="toolrow">
+        <div class="field" style="max-width:180px"><label>Fecha de cierre</label><input type="date" id="closeDate"></div>
+        <button class="btn-green" style="height:42px" onclick="registerClosing()">Registrar cierre (autocompletar)</button>
+      </div>
+      <ul class="close-list" id="closeList"></ul>
+    </div>
+  </section>
+
+  <section class="tabpane" id="tab-ajustes">
+    <h2 class="ptitle">Ajustes</h2>
+    <p class="pdesc">Perfil de la bóveda, copias de seguridad, restauración y bóvedas asesoradas.</p>
+    <div class="widget"><h3>Perfil</h3>
+      <div class="toolrow">
+        <div class="field" style="max-width:130px"><label>Iniciales (cabecera)</label><input id="setInitials" maxlength="4" placeholder="GP"></div>
+        <div class="field" style="max-width:110px"><label>Edad</label><input id="setAge" type="number" min="1" max="110"></div>
+        <div class="field" style="max-width:130px"><label>Rol</label><input disabled id="setRole"></div>
+        <button class="btn-primary" style="height:42px" onclick="saveMeta()">Guardar perfil</button>
+      </div>
+      <p class="small-note">La edad permite a Lumo ajustar el horizonte temporal en cada valoración mensual.</p>
+    </div>
+    <div class="widget"><h3>Copias de seguridad</h3>
+      <button class="btn-secondary" onclick="exportVault()">Exportar datos (JSON)</button>
+      <p class="small-note">Conserve una copia en Proton Drive con cada cierre mensual.</p>
+    </div>
+    <div class="widget"><h3>Restauración</h3>
+      <button class="btn-danger" onclick="restoreOctober()">Restaurar datos de octubre 2026</button>
+      <p class="small-note">Sustituye la bóveda actual por los datos de partida (cierre 31/10/2026).</p>
+    </div>
+    <div class="widget" id="advisorBox"><h3>Bóvedas asesoradas (solo lectura)</h3><div id="advisorList"></div></div>
+  </section>
+</main>
+</div>
+
+<div class="modal-bg" id="ritualModal"><div class="modal">
+  <h3 style="margin-bottom:12px">Cierre registrado</h3>
+  <p style="font-size:14px;margin-bottom:14px">Su cierre queda guardado. Recuerde el <b>ritual de cierre mensual</b>:</p>
+  <ol style="font-size:13px;color:var(--slate);padding-left:20px;line-height:1.9">
+    <li>Capturar <b>Resumen</b>, <b>Cartera</b> y <b>Movimientos</b> del mes.</li>
+    <li>Enviárselas a <b>Lumo</b> para la valoración (máx. 10 líneas).</li>
+    <li>Copiar la valoración en el <b>cuaderno de bitácora</b>.</li>
+    <li><b>Exportar</b> la copia de seguridad a Proton Drive.</li>
+  </ol>
+  <button class="btn-primary" style="margin-top:16px" onclick="document.getElementById('ritualModal').classList.remove('on')">Entendido</button>
+</div></div>
+
+<div class="toast" id="toast"></div>
+<div class="chart-tip" id="tip"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const SB_URL='https://gipckwwrvkpjkufogabw.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpcGNrd3dydmtwamt1Zm9nYWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MzEyMzgsImV4cCI6MjEwOTEwNzIzOH0.sq-mgxD3Q4GwQiKEa-0s8wEhWqO7AP2IJB-zrAuYvsg';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const GROUPS=[
+ {id:'rv',name:'Renta Variable',color:'#16294B'},
+ {id:'rf',name:'Renta Fija',color:'#3A5A78'},
+ {id:'oro',name:'Oro',color:'#8FA3BF'},
+ {id:'cta',name:'Cuentas Remuneradas',color:'#55606E'},
+ {id:'liq',name:'Liquidez',color:'#A8C6E8'},
+ {id:'otros',name:'Otros',color:'#C6D2E0'}];
+const gColor=id=>(GROUPS.find(g=>g.id===id)||GROUPS[5]).color;
+const gName=id=>(GROUPS.find(g=>g.id===id)||GROUPS[5]).name;
+const $=id=>document.getElementById(id);
+
+/* ============ FORMATO NUMÉRICO ÚNICO ============
+   Punto de miles, coma decimal, siempre dos decimales.
+   TODA salida numérica (presente y futura) pasa por aquí. */
+function nf(v,dec){dec=(dec===undefined)?2:dec;
+  if(v===null||v===undefined||isNaN(v))return '—';
+  const neg=v<0,r=Math.round(Math.abs(v)*Math.pow(10,dec));
+  let ip=Math.floor(r/Math.pow(10,dec)),fp=(r%Math.pow(10,dec)).toString().padStart(dec,'0');
+  const s=ip.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return (neg?'-':'')+s+(dec>0?','+fp:'');}
+const eur=(v,sign)=>((sign&&v>0)?'+':'')+nf(v)+' €';
+const pct=(v,sign)=>((sign&&v>0)?'+':'')+nf(v)+' %';
+
+/* ============ CRIPTO ============ */
+const b64u={e:b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+ d:s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))};
+async function deriveKey(pass,salt){
+ const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+ return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function encJSON(obj,key){
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+ return {iv:b64u.e(iv),ct:b64u.e(ct)};}
+async function decJSON(env,key){
+ const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64u.d(env.iv)},key,b64u.d(env.ct));
+ return JSON.parse(new TextDecoder().decode(pt));}
+
+/* ============ SEMILLA OCTUBRE ============ */
+function seedData(){return{
+ meta:{initials:'GP',age:null},
+ positions:[
+  {name:'MSCI World (Fidelity)',group:'rv',inv:7713.68,val:8122.45,mes:600,isin:'IE00BYX5NX33',ter:0.12},
+  {name:'PP S&P 500 (heredado, MyInvestor)',group:'rv',inv:4837.22,val:5114.52,mes:0,isin:'',ter:null},
+  {name:'MSCI Emergentes (Fidelity)',group:'rv',inv:2698.13,val:2559.17,mes:100,isin:'',ter:null},
+  {name:'Global Small Caps (Vanguard)',group:'rv',inv:1330.37,val:1342.68,mes:100,isin:'IE00B3X1LM05',ter:0.38},
+  {name:'Global Bond (Vanguard)',group:'rf',inv:3385.84,val:3334.33,mes:300,isin:'',ter:null},
+  {name:'Eurozone Inflation-linked (Vanguard)',group:'otros',inv:0,val:0,mes:50,isin:'',ter:null},
+  {name:'Groupama Trésorerie IC',group:'otros',inv:0,val:0,mes:50,isin:'',ter:null},
+  {name:'Oro (iShares)',group:'oro',inv:143.86,val:135.57,mes:150,isin:'IE00B4ND3602',ter:0.12},
+  {name:'Trade Republic',group:'cta',inv:3400,val:3408.98,mes:100,isin:'',ter:null},
+  {name:'Bankinter',group:'cta',inv:2900,val:2920.02,mes:50,isin:'',ter:null},
+  {name:'Renault Bank',group:'cta',inv:2800,val:2815.53,mes:50,isin:'',ter:null}],
+ cash:[{name:'MyInvestor',val:1871.31},{name:'CaixaBank',val:7748.38},{name:'BBVA',val:84.91}],
+ debts:[{name:'Préstamo BBVA',val:14557.99,fee:175.99}],
+ movimientos:[],goals:[],bitacora:[],
+ closings:[{date:'2026-10-31',note:'Cierre inicial',portfolio:29753.25,cash:9704.60,debt:14557.99,net:24899.86}]};}
+function seedEmpty(){const d=seedData();d.positions=[];d.cash=[];d.debts=[];d.movimientos=[];d.goals=[];d.bitacora=[];d.closings=[];d.meta={initials:'',age:null};return d;}
+
+/* ============ ESTADO ============ */
+let USER=null,PROFILE=null,DATA=null,masterKey=null,HAS_MASTER=false,mfaFactorId=null,_enroll=null,_pendingRow=null,_newSalt=null;
+const TABS=[['resumen','Resumen'],['objetivos','Objetivos y Recomendaciones'],['cartera','Cartera'],['movimientos','Movimientos'],['historial','Historial'],['ajustes','Ajustes']];
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
+function showErr(i,m){const e=$(i);e.textContent=m;e.style.display='block';}
+function hideErr(i){$(i).style.display='none';}
+function screen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));if(id)$(id).classList.add('active');}
+
+/* ============ AUTENTICACIÓN ============ */
+function showLogin(){$('loginForm').style.display='block';$('regForm').style.display='none';hideErr('authErr');}
+function showRegister(){$('loginForm').style.display='none';$('regForm').style.display='block';hideErr('authErr');}
+async function doLogin(){
+ hideErr('authErr');
+ try{const {error}=await sb.auth.signInWithPassword({email:$('liEmail').value.trim(),password:$('liPass').value});
+ if(error)throw error;await afterAuth();}
+ catch(e){showErr('authErr','No se pudo iniciar sesión: '+(e.message||'revise correo y contraseña'));}}
+async function doRegister(){
+ hideErr('authErr');
+ const em=$('rgEmail').value.trim(),p1=$('rgPass').value,p2=$('rgPass2').value;
+ if(!em||!p1){showErr('authErr','Indique correo y contraseña.');return;}
+ if(p1.length<8){showErr('authErr','La contraseña debe tener al menos 8 caracteres.');return;}
+ if(p1!==p2){showErr('authErr','Las contraseñas no coinciden.');return;}
+ try{const {error}=await sb.auth.signUp({email:em,password:p1});if(error)throw error;
+ const e=$('authErr');e.style.background='var(--pale)';e.style.borderColor='var(--sky)';e.style.color='var(--navy)';
+ showErr('authErr','Cuenta creada. Revise su correo (incluida carpeta Spam) y pulse el enlace de confirmación antes de iniciar sesión.');}
+ catch(e){showErr('authErr','Error: '+(e.message||'no se pudo registrar'));}}
+async function afterAuth(){
+ USER=(await sb.auth.getUser()).data.user;
+ if(!USER){screen('scr-auth');return;}
+ const {data:aal}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+ if(aal.nextLevel==='aal2'&&aal.currentLevel!=='aal2'){
+  const {data:factors}=await sb.auth.mfa.listFactors();
+  const f=factors&&factors.totp&&factors.totp[0];
+  if(f){mfaFactorId=f.id;screen('scr-mfa');$('mfaCode').focus();return;}}
+ await postMFA();}
+async function verifyMFA(){
+ hideErr('mfaErr');
+ try{const {data:ch,error:e1}=await sb.auth.mfa.challenge({factorId:mfaFactorId});if(e1)throw e1;
+ const {error:e2}=await sb.auth.mfa.verify({factorId:mfaFactorId,challengeId:ch.id,code:$('mfaCode').value.trim()});if(e2)throw e2;
+ await postMFA();}
+ catch(e){showErr('mfaErr','Código incorrecto. Compruebe que la hora del móvil es automática y reintente.');}}
+async function postMFA(){
+ const {data:factors}=await sb.auth.mfa.listFactors();
+ const hasTOTP=factors&&factors.totp&&factors.totp.length>0;
+ if(!hasTOTP){await beginEnroll();return;}
+ const {data:prof}=await sb.from('profiles').select('*').eq('id',USER.id).maybeSingle();
+ if(prof&&prof.role){PROFILE=prof;}
+ else{await sb.from('profiles').insert({id:USER.id,display_name:USER.email,role:'member'});PROFILE={role:'member'};}
+ await loadVault();}
+async function beginEnroll(){
+ try{const {data,error}=await sb.auth.mfa.enroll({friendlyName:'GPR Authenticator'});if(error)throw error;
+ _enroll=data;$('enrollSecret').textContent=data.totp.secret;hideErr('enrollErr');screen('scr-enroll');}
+ catch(e){const {data:factors}=await sb.auth.mfa.listFactors();
+ const f=factors&&factors.totp&&factors.totp[0];
+ if(f){mfaFactorId=f.id;screen('scr-mfa');}else showErr('enrollErr','No se pudo iniciar el alta 2FA: '+e.message);}}
+async function confirmEnroll(){
+ hideErr('enrollErr');
+ const code=$('enrollCode').value.trim();
+ if(code.length!==6){showErr('enrollErr','Introduzca el código de 6 dígitos.');return;}
+ try{const {data:ch,error:e1}=await sb.auth.mfa.challenge({factorId:_enroll.id});if(e1)throw e1;
+ const {error:e2}=await sb.auth.mfa.verify({factorId:_enroll.id,challengeId:ch.id,code});if(e2)throw e2;
+ await postMFA();}
+ catch(e){showErr('enrollErr','Código incorrecto. Verifique que la clave copiada coincide exactamente y que la hora del móvil es automática.');}}
+
+/* ============ BÓVEDA ============ */
+async function loadVault(){
+ const {data:row,error}=await sb.from('vault_records').select('*').eq('owner_id',USER.id).maybeSingle();
+ if(error){toast('Error al leer la bóveda: '+error.message);return;}
+ if(row&&row.payload){
+  let env=row.payload;
+  if(typeof env==='string'){try{env=JSON.parse(env);}catch(_){env=null;}}
+  if(env&&env.enc){
+   HAS_MASTER=true;_pendingRow=row;
+   $('masterDesc').textContent='Introduzca la contraseña maestra de su bóveda cifrada.';
+   $('mpass2row').style.display='none';$('masterBtn').textContent='Abrir bóveda';
+   screen('scr-master');return;}
+  if(env&&env.data){HAS_MASTER=false;DATA=env.data;enterApp();return;}}
+ if(PROFILE.role==='advisor'){
+  HAS_MASTER=true;_pendingRow=null;
+  $('masterDesc').textContent='Defina su contraseña maestra: cifra la bóveda en su navegador (AES-GCM 256) antes de viajar al servidor.';
+  $('mpass2row').style.display='block';$('masterBtn').textContent='Crear bóveda cifrada';
+  screen('scr-master');}
+ else{HAS_MASTER=false;DATA=seedEmpty();await persistVault();enterApp();}}
+async function submitMaster(){
+ hideErr('masterErr');
+ const p1=$('mpass1').value;
+ if(_pendingRow){
+  try{const salt=b64u.d(_pendingRow.salt||'');
+   if(!salt||salt.length===0)throw new Error('sal');
+   const key=await deriveKey(p1,salt);
+   let env=_pendingRow.payload;if(typeof env==='string')env=JSON.parse(env);
+   DATA=await decJSON(env,key);masterKey=key;enterApp();return;}
+  catch(e){showErr('masterErr','La contraseña no descifra esta bóveda. Si no la recuerda, no hay recuperación posible: use «Restaurar datos de octubre 2026» en Ajustes tras crear una nueva.');return;}}
+ if(p1.length<8){showErr('masterErr','La contraseña maestra debe tener al menos 8 caracteres.');return;}
+ if(p1!==$('mpass2').value){showErr('masterErr','Las contraseñas no coinciden.');return;}
+ const salt=crypto.getRandomValues(new Uint8Array(16));
+ _newSalt=b64u.e(salt);
+ masterKey=await deriveKey(p1,salt);
+ DATA=seedData();await persistVault();enterApp();}
+async function persistVault(){
+ if(!USER)return false;
+ let payload,salt='';
+ if(HAS_MASTER&&masterKey){
+  payload={enc:true,...(await encJSON(DATA,masterKey))};
+  salt=_newSalt||(_pendingRow&&_pendingRow.salt)||'';}
+ else payload={enc:false,data:DATA};
+ const {error}=await sb.from('vault_records').upsert({owner_id:USER.id,payload,salt},{onConflict:'owner_id'});
+ if(error){toast('Error al guardar: '+error.message);return false;}
+ return true;}
+async function enterApp(){
+ screen(null);$('app').classList.add('active');
+ $('hdrInitials').textContent=((DATA.meta&&DATA.meta.initials)||'GP').toUpperCase();
+ $('hdrRole').textContent=PROFILE.role==='advisor'?'Asesor':'Titular de bóveda';
+ const bar=$('tabbar');bar.innerHTML='';
+ TABS.forEach(([id,label])=>{const b=document.createElement('button');b.textContent=label;b.dataset.tab=id;b.onclick=()=>switchTab(id);bar.appendChild(b);});
+ const sel=$('posGroup');sel.innerHTML='';
+ GROUPS.filter(g=>g.id!=='liq').forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name;sel.appendChild(o);});
+ const t=new Date().toISOString().slice(0,10);
+ $('mvDate').value=t;$('bitDate').value=t;$('closeDate').value=t;
+ switchTab('resumen');}
+function switchTab(id){
+ document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
+ document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('on',p.id==='tab-'+id));
+ if(id==='resumen'){renderSummary();drawWidget('cvGroups',drawGroupsChart);drawWidget('cvComp',drawCompChart);}
+ else if(id==='cartera')renderTables();
+ else if(id==='movimientos')renderMovs();
+ else if(id==='historial'){renderCloseList();drawWidget('cvSerie',drawSerie);drawWidget('cvReturns',drawReturns);}
+ else if(id==='objetivos')renderGoalsBitacora();
+ else if(id==='ajustes')renderSettings();}
+async function doLogout(){await sb.auth.signOut();location.reload();}
+
+/* ============ CÁLCULOS ============ */
+const sumPos=()=>DATA.positions.reduce((a,p)=>a+p.val,0);
+const sumInv=()=>DATA.positions.reduce((a,p)=>a+p.inv,0);
+const sumMes=()=>DATA.positions.reduce((a,p)=>a+(p.mes||0),0);
+const sumCash=()=>DATA.cash.reduce((a,c)=>a+c.val,0);
+const sumDebt=()=>DATA.debts.reduce((a,d)=>a+d.val,0);
+const sumFee=()=>DATA.debts.reduce((a,d)=>a+(d.fee||0),0);
+const activoTotal=()=>sumPos()+sumCash();
+const netWorth=()=>activoTotal()-sumDebt();
+
+/* ============ RESUMEN (tarjetas centradas, dos líneas en rentabilidad) ============ */
+function renderSummary(){
+ const pv=sumPos(),iv=sumInv(),lat=pv-iv,rp=iv>0?((pv/iv-1)*100):0;
+ const cs=sumCash(),dt=sumDebt(),nw=netWorth(),at=activoTotal();
+ const k=(cls,l,v,s1,s2)=>'<div class="kcard '+cls+'"><div class="klabel">'+l+'</div><div class="kvalue">'+v+'</div><div class="ksub">'+
+  (s2?(s1+'<br>'+s2):(s1||''))+'</div></div>';
+ const clsLat=lat>=0?'pos':'neg';
+ $('sumCards').innerHTML=
+  k('','Valor de cartera',eur(pv),'Aportaciones: '+eur(sumMes())+'/mes')+
+  k('','Rentabilidad latente','<span class="'+clsLat+'">'+pct(rp,true)+'</span>','<span class="'+clsLat+'">'+eur(lat,true)+'</span>','sobre '+eur(iv)+' invertidos')+
+  k('k-sky','Liquidez bancaria',eur(cs),at>0?pct(cs/at*100)+' del activo total':'')+
+  k('k-red','Deuda pendiente',eur(dt),'Cuota: '+eur(sumFee())+'/mes')+
+  k('k-green','Patrimonio neto',eur(nw),at>0?'Activo total: '+eur(at):'');}
+
+/* ============ GRÁFICOS v2.2 · GEOMETRÍA ROBUSTA ============ */
+function prepCanvas(cv,H){
+ const dpr=window.devicePixelRatio||1;
+ const w=cv.parentElement.clientWidth;
+ if(!w||w<10)return null;
+ H=Math.max(110,Math.min(H||200,460));
+ cv.width=w*dpr;cv.height=H*dpr;cv.style.width=w+'px';cv.style.height=H+'px';
+ const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,H);
+ return {ctx,W:w,H};}
+function drawWidget(cid,fn){
+ requestAnimationFrame(()=>{const cv=$(cid);if(!cv)return;
+  if(!cv.offsetParent||cv.parentElement.clientWidth<10){
+   setTimeout(()=>drawWidget(cid,fn),150);return;}
+  fn(cv);});}
+window.addEventListener('resize',()=>{
+ if($('tab-resumen').classList.contains('on')){drawWidget('cvGroups',drawGroupsChart);drawWidget('cvComp',drawCompChart);}
+ if($('tab-historial').classList.contains('on')){drawWidget('cvSerie',drawSerie);drawWidget('cvReturns',drawReturns);}});
+function emptyChart(ctx,W,H,msg){ctx.fillStyle='#55606E';ctx.font='13px Calibri, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(msg||'Sin datos todavía',W/2,H/2);}
+function fitLabel(ctx,text,maxPx){
+ if(ctx.measureText(text).width<=maxPx)return text;
+ let t=text;
+ while(t.length>1&&ctx.measureText(t+'…').width>maxPx)t=t.slice(0,-1);
+ return t+'…';}
+const ML_FIX=190, MR_FIX=150;
+
+function drawGroupsChart(cv){
+ const tot=activoTotal();
+ const agg={};DATA.positions.forEach(p=>agg[p.group]=(agg[p.group]||0)+p.val);
+ agg['liq']=(agg['liq']||0)+sumCash();
+ const gs=[];GROUPS.forEach(g=>{if((agg[g.id]||0)>0.004)gs.push({name:g.name,color:g.color,val:agg[g.id]});});
+ gs.sort((a,b)=>b.val-a.val);
+ if(tot<=0||!gs.length){const c=prepCanvas(cv,110);if(c)emptyChart(c.ctx,c.W,c.H);$('lgGroups').innerHTML='';return;}
+ const bh=24,gap=12,pt=4,pb=6;
+ const H=pt+gs.length*(bh+gap)-gap+pb;
+ const c=prepCanvas(cv,H);if(!c)return;
+ const {ctx,W}=c;
+ const ml=Math.min(ML_FIX,Math.floor(W*0.45));
+ const mr=Math.min(MR_FIX,Math.floor(W*0.24));
+ const maxLbl=ml-14;
+ let y=pt+bh/2;
+ ctx.font='12.5px Calibri, sans-serif';ctx.textBaseline='middle';ctx.textAlign='left';
+ gs.forEach(g=>{
+  const bw=Math.max((W-ml-mr)*(g.val/tot),2);
+  ctx.fillStyle=g.color;ctx.fillRect(ml,y-bh/2,bw,bh);
+  ctx.fillStyle='#16294B';
+  ctx.fillText(fitLabel(ctx,g.name,maxLbl),0,y);
+  const vt=nf(g.val)+' € · '+nf(g.val/tot*100)+' %';
+  const vx=ml+bw+10;
+  if(vx+ctx.measureText(vt).width<=W){ctx.fillText(vt,vx,y);}
+  else{ctx.textAlign='right';ctx.fillText(vt,W,y);ctx.textAlign='left';}
+  y+=bh+gap;});
+ $('lgGroups').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--slate);margin-top:10px">'+gs.map(g=>'<span><span class="legend-dot" style="background:'+g.color+'"></span>'+g.name+'</span>').join('')+'</div>';}
+
+function drawCompChart(cv){
+ const ps=DATA.positions.filter(p=>p.val>0).sort((a,b)=>b.val-a.val);
+ const tot=sumPos();
+ if(tot<=0||!ps.length){const c=prepCanvas(cv,110);if(c)emptyChart(c.ctx,c.W,c.H);return;}
+ const bh=19,gap=8,pt=4,pb=6;
+ const H=pt+ps.length*(bh+gap)-gap+pb;
+ const c=prepCanvas(cv,H);if(!c)return;
+ const {ctx,W}=c;
+ const ml=Math.min(ML_FIX,Math.floor(W*0.45));
+ const mr=Math.min(MR_FIX,Math.floor(W*0.26));
+ const maxLbl=ml-14;
+ let y=pt+bh/2;
+ ctx.font='11.5px Calibri, sans-serif';ctx.textBaseline='middle';ctx.textAlign='left';
+ ps.forEach(p=>{
+  const bw=Math.max((W-ml-mr)*(p.val/tot),2);
+  ctx.fillStyle=gColor(p.group);ctx.fillRect(ml,y-bh/2,bw,bh);
+  ctx.fillStyle='#16294B';
+  ctx.fillText(fitLabel(ctx,p.name,maxLbl),0,y);
+  const vt=nf(p.val)+' € · '+nf(p.val/tot*100)+' %';
+  const vx=ml+bw+10;
+  if(vx+ctx.measureText(vt).width<=W){ctx.fillText(vt,vx,y);}
+  else{ctx.textAlign='right';ctx.fillText(vt,W,y);ctx.textAlign='left';}
+  y+=bh+gap;});}
+
+function drawSerie(cv){
+ const cls=[...DATA.closings].sort((a,b)=>a.date<b.date?-1:1);
+ const H=260;
+ const c=prepCanvas(cv,H);if(!c)return;
+ const {ctx,W}=c;
+ if(cls.length<1){$('serieNote').textContent='Aún no hay cierres registrados. La serie crecerá mes a mes (escala preparada para 4 años).';emptyChart(ctx,W,H);return;}
+ const ml=80,mr=20,mt=18,mb=30,n=Math.max(cls.length,2);
+ const vals=cls.map(cc=>cc.net);
+ let lo=Math.min(...vals),hi=Math.max(...vals);if(hi===lo)hi=lo+1;
+ const pad=(hi-lo)*0.12;lo-=pad;hi+=pad;
+ const X=i=>ml+(W-ml-mr)*(i/(n-1));
+ const Y=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));
+ ctx.strokeStyle='#EAF1F8';ctx.fillStyle='#55606E';ctx.font='11px Calibri, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+ for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);ctx.beginPath();ctx.moveTo(ml,y);ctx.lineTo(W-mr,y);ctx.stroke();ctx.fillText(nf(v,0)+' €',ml-8,y);}
+ ctx.textAlign='center';ctx.textBaseline='top';
+ const fy=+cls[0].date.slice(0,4),fm=+cls[0].date.slice(5,7);
+ for(let m=0;m<48;m++){
+  if((fm-1+m)%12===0){const x=X(Math.min(m,n-1));ctx.fillText(String(fy+Math.floor(((fm-1+m))/12)),x,H-mb+4);}}
+ ctx.strokeStyle='#16294B';ctx.lineWidth=2.5;ctx.beginPath();
+ cls.forEach((cc,i)=>{const x=X(i),y=Y(cc.net);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+ ctx.stroke();ctx.lineWidth=1;
+ cls.forEach((cc,i)=>{ctx.fillStyle='#16294B';ctx.beginPath();ctx.arc(X(i),Y(cc.net),3.5,0,7);ctx.fill();});
+ cv._pts=cls.map((cc,i)=>({x:X(i),y:Y(cc.net),c:cc}));
+ const last=cls[cls.length-1];
+ $('serieNote').textContent='Cierre más reciente: '+last.date+' · Patrimonio neto '+eur(last.net)+'. Pase el puntero por la línea para ver cada mes (escala para 4 años).';}
+
+function drawReturns(cv){
+ const cls=[...DATA.closings].sort((a,b)=>a.date<b.date?-1:1);
+ const H=200;
+ const c=prepCanvas(cv,H);if(!c)return;
+ const {ctx,W}=c;
+ if(cls.length<2){$('retNote').textContent='Con el cierre de noviembre se calculará la primera barra (variación frente a octubre). Escala preparada para 10 años.';emptyChart(ctx,W,H);return;}
+ const rets=[];
+ for(let i=1;i<cls.length;i++){const prev=cls[i-1].net,cur=cls[i].net;
+  if(prev>0)rets.push({date:cls[i].date,r:(cur/prev-1)*100});}
+ if(!rets.length){$('retNote').textContent='Sin variaciones calculables todavía.';emptyChart(ctx,W,H);return;}
+ const ml=80,mr=20,mt=12,mb=30,n=Math.max(rets.length,2);
+ const hi=Math.max(...rets.map(r=>r.r),1),lo=Math.min(...rets.map(r=>r.r),-1);
+ const X=i=>ml+(W-ml-mr)*((i+0.5)/n);
+ const Y=v=>mt+(H-mt-mb)*(1-(v+lo)/(hi-lo));
+ ctx.strokeStyle='#8FA3BF';ctx.beginPath();ctx.moveTo(ml,Y(0));ctx.lineTo(W-mr,Y(0));ctx.stroke();
+ ctx.fillStyle='#55606E';ctx.font='11px Calibri, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+ ctx.fillText((hi>0?'+':'')+nf(hi)+' %',ml-8,Y(hi));
+ ctx.fillText(nf(lo)+' %',ml-8,Y(lo));
+ ctx.fillText('0,00 %',ml-8,Y(0));
+ rets.forEach((r,i)=>{
+  ctx.fillStyle=r.r>=0?'#3A7D44':'#B3402E';
+  const w=Math.min(18,(W-ml-mr)/n*0.7);
+  const yr=Y(r.r),yz=Y(0);
+  ctx.fillRect(X(i)-w/2,Math.min(yz,yr),w,Math.abs(yr-yz)||1);});
+ $('retNote').textContent='Cada barra = variación del patrimonio neto frente al mes anterior ('+rets.length+' mes(es) con datos, escala para 10 años). Rojo financiero en negativo, conforme al manual.';}
+
+document.addEventListener('mousemove',e=>{
+ const cv=$('cvSerie'),tip=$('tip');
+ if(!cv||!cv._pts||!cv.offsetParent){tip.style.display='none';return;}
+ const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+ if(x<0||y<0||x>r.width||y>r.height){tip.style.display='none';return;}
+ let best=null,bd=1e9;
+ cv._pts.forEach(p=>{const d=Math.abs(p.x-x);if(d<bd){bd=d;best=p;}});
+ if(best&&bd<40){
+  tip.style.display='block';
+  tip.textContent=best.c.date+' · '+eur(best.c.net);
+  tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-10)+'px';}
+ else tip.style.display='none';});
+
+/* ============ TABLAS ============ */
+function delBtn(fn,arg){return '<button class="delx" onclick="'+fn+'('+arg+')">✕</button>';}
+function renderTables(){
+ let h='<thead><tr><th>Activo</th><th>Grupo</th><th class="num-h">Aport./mes</th><th class="num-h">Invertido</th><th class="num-h">Valor actual</th><th class="num-h">Rentab.</th><th class="num-h">Peso</th><th></th></tr></thead><tbody>';
+ const tp=sumPos(),ti=sumInv(),tm=sumMes();
+ DATA.positions.forEach((p,i)=>{
+  const ret=(p.inv>0&&p.val>0)?(p.val/p.inv-1)*100:null;
+  const w=tp>0?p.val/tp*100:null;
+  h+='<tr><td>'+p.name+'</td><td><span class="tagpill" style="background:'+gColor(p.group)+'">'+gName(p.group)+'</span></td>'+
+   '<td class="num">'+eur(p.mes||0)+'</td><td class="num">'+eur(p.inv)+'</td><td class="num">'+eur(p.val)+'</td>'+
+   '<td class="num '+(ret===null?'':(ret>=0?'pos':'neg'))+'">'+(ret===null?'—':pct(ret,true))+'</td>'+
+   '<td class="num">'+(w===null?'—':pct(w))+'</td><td>'+delBtn('delPos',i)+'</td></tr>';});
+ h+='<tr class="total"><td>Total vigente</td><td></td><td class="num">'+eur(tm)+'</td><td class="num">'+eur(ti)+'</td><td class="num">'+eur(tp)+'</td>'+
+  '<td class="num '+(tp>=ti?'pos':'neg')+'">'+(ti>0?pct((tp/ti-1)*100,true):'—')+'</td><td class="num">100,00 %</td><td></td></tr></tbody>';
+ $('posTable').innerHTML=h;
+ h='<thead><tr><th>Entidad</th><th class="num-h">Saldo</th><th></th></tr></thead><tbody>';
+ DATA.cash.forEach((cc,i)=>{h+='<tr><td>'+cc.name+'</td><td class="num">'+eur(cc.val)+'</td><td>'+delBtn('delCash',i)+'</td></tr>';});
+ h+='<tr class="total"><td>Total liquidez</td><td class="num">'+eur(sumCash())+'</td><td></td></tr></tbody>';
+ $('cashTable').innerHTML=h;
+ h='<thead><tr><th>Concepto</th><th class="num-h">Capital pendiente</th><th class="num-h">Cuota/mes</th><th></th></tr></thead><tbody>';
+ DATA.debts.forEach((d,i)=>{h+='<tr><td>'+d.name+'</td><td class="num">'+eur(d.val)+'</td><td class="num">'+eur(d.fee||0)+'</td><td>'+delBtn('delDebt',i)+'</td></tr>';});
+ h+='<tr class="total"><td>Total deuda</td><td class="num">'+eur(sumDebt())+'</td><td class="num">'+eur(sumFee())+'</td><td></td></tr></tbody>';
+ $('debtTable').innerHTML=h;}
+async function addPosition(){
+ const n=$('posName').value.trim();if(!n){toast('Indique un nombre para la posición.');return;}
+ DATA.positions.push({name:n,group:$('posGroup').value,inv:+$('posInv').value||0,val:+$('posVal').value||0,mes:+$('posMes').value||0,isin:'',ter:null});
+ $('posName').value='';$('posInv').value='';$('posVal').value='';$('posMes').value='';
+ renderTables();await persistVault();toast('Posición añadida.');}
+async function delPos(i){DATA.positions.splice(i,1);renderTables();await persistVault();}
+async function addCash(){const n=$('cashName').value.trim();if(!n)return;DATA.cash.push({name:n,val:+$('cashVal').value||0});$('cashName').value='';$('cashVal').value='';renderTables();await persistVault();}
+async function delCash(i){DATA.cash.splice(i,1);renderTables();await persistVault();}
+async function addDebt(){const n=$('debtName').value.trim();if(!n)return;DATA.debts.push({name:n,val:+$('debtVal').value||0,fee:+$('debtFee').value||0});$('debtName').value='';$('debtVal').value='';$('debtFee').value='';renderTables();await persistVault();}
+async function delDebt(i){DATA.debts.splice(i,1);renderTables();await persistVault();}
+
+function renderMovs(){
+ let h='<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="num-h">Importe</th><th></th></tr></thead><tbody>';
+ [...DATA.movimientos].sort((a,b)=>a.date<b.date?1:-1).forEach((m)=>{
+  h+='<tr><td>'+m.date+'</td><td>'+m.type+'</td><td>'+m.desc+'</td><td class="num '+(m.amt>=0?'pos':'neg')+'">'+eur(m.amt,true)+'</td><td>'+delBtn('delMov',DATA.movimientos.indexOf(m))+'</td></tr>';});
+ if(!DATA.movimientos.length)h+='<tr><td colspan="5" style="color:var(--slate)">Sin movimientos registrados.</td></tr>';
+ $('movTable').innerHTML=h+'</tbody>';}
+async function addMov(){
+ const d=$('mvDesc').value.trim();
+ DATA.movimientos.push({date:$('mvDate').value,type:$('mvType').value,desc:d||'—',amt:+$('mvAmt').value||0});
+ $('mvDesc').value='';$('mvAmt').value='';renderMovs();await persistVault();toast('Movimiento registrado.');}
+async function delMov(i){DATA.movimientos.splice(i,1);renderMovs();await persistVault();}
+
+/* ============ OBJETIVOS Y BITÁCORA ============ */
+function renderGoalsBitacora(){
+ let h='';
+ if(!DATA.goals.length)h='<p class="small-note">Sin objetivos definidos todavía (hasta 7, opcionales).</p>';
+ DATA.goals.forEach((g,i)=>{
+  h+='<div class="goal-item"><b>'+(i+1)+'.</b> '+g.text+
+   (g.amt?' · <b>'+eur(g.amt)+'</b>':'')+(g.deadline?' · Plazo: '+g.deadline:'')+
+   ' <span style="float:right">'+delBtn('delGoal',i)+'</span></div>';});
+ $('goalsList').innerHTML=h;
+ let b='';
+ [...DATA.bitacora].sort((a,c)=>a.date<c.date?1:-1).forEach(e=>{
+  b+='<div class="bitacora-entry"><div class="date">'+e.date+'</div>'+e.text+'</div>';});
+ if(!DATA.bitacora.length)b='<p class="small-note">El cuaderno de bitácora irá recogiendo la valoración mensual de Lumo (máx. 10 líneas por cierre).</p>';
+ $('bitList').innerHTML=b;}
+async function addGoal(){
+ if(DATA.goals.length>=7){toast('Máximo 7 objetivos.');return;}
+ const t=$('goalText').value.trim();if(!t){toast('Describa el objetivo.');return;}
+ DATA.goals.push({text:t,amt:+$('goalAmt').value||null,deadline:$('goalDate').value||null});
+ $('goalText').value='';$('goalAmt').value='';$('goalDate').value='';
+ renderGoalsBitacora();await persistVault();toast('Objetivo añadido.');}
+async function delGoal(i){DATA.goals.splice(i,1);renderGoalsBitacora();await persistVault();}
+async function addBitacora(){
+ const t=$('bitText').value.trim();if(!t){toast('Pegue o escriba la valoración.');return;}
+ DATA.bitacora.push({date:$('bitDate').value||new Date().toISOString().slice(0,10),text:t});
+ $('bitText').value='';renderGoalsBitacora();await persistVault();toast('Entrada guardada en la bitácora.');}
+
+/* ============ HISTORIAL ============ */
+function renderCloseList(){
+ const cls=[...DATA.closings].sort((a,b)=>a.date<b.date?1:-1);
+ $('closeList').innerHTML=cls.map(c=>'<li>▸ <b>'+c.date+'</b> · Cartera '+eur(c.portfolio)+' · Liquidez '+eur(c.cash)+' · Deuda '+eur(c.debt)+' · <b>Patrimonio neto '+eur(c.net)+'</b></li>').join('')||'<li style="color:var(--slate)">Sin cierres registrados.</li>';}
+async function registerClosing(){
+ const d=$('closeDate').value||new Date().toISOString().slice(0,10);
+ if(DATA.closings.some(c=>c.date===d)){toast('Ya existe un cierre con esa fecha.');return;}
+ const pv=sumPos(),cs=sumCash(),dt=sumDebt();
+ DATA.closings.push({date:d,note:'Cierre mensual',portfolio:pv,cash:cs,debt:dt,net:pv+cs-dt});
+ renderCloseList();await persistVault();
+ $('ritualModal').classList.add('on');}
+
+/* ============ AJUSTES ============ */
+function renderSettings(){
+ $('setInitials').value=(DATA.meta&&DATA.meta.initials)||'';
+ $('setAge').value=(DATA.meta&&DATA.meta.age)||'';
+ $('setRole').value=PROFILE.role==='advisor'?'Asesor (administrador)':'Titular';
+ if(PROFILE.role==='advisor')loadAdvisorVaults();
+ else $('advisorBox').style.display='none';}
+async function saveMeta(){
+ DATA.meta=DATA.meta||{};
+ DATA.meta.initials=$('setInitials').value.trim()||'GP';
+ DATA.meta.age=+$('setAge').value||null;
+ $('hdrInitials').textContent=DATA.meta.initials.toUpperCase();
+ await persistVault();toast('Perfil guardado.');}
+function exportVault(){
+ const blob=new Blob([JSON.stringify({enc:false,plain:DATA,exported:new Date().toISOString()},null,2)],{type:'application/json'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='gpr-boveda-'+new Date().toISOString().slice(0,10)+'.json';
+ a.click();toast('Copia exportada. Guárdela en Proton Drive.');}
+async function restoreOctober(){
+ if(!confirm('Esto SUSTITUIRÁ la bóveda actual por los datos de octubre 2026. ¿Continuar?'))return;
+ const m={initials:(DATA.meta&&DATA.meta.initials)||'GP',age:(DATA.meta&&DATA.meta.age)||null};
+ DATA=seedData();DATA.meta=m;
+ if($('app').classList.contains('active')){
+  $('hdrInitials').textContent=(m.initials||'GP').toUpperCase();
+  switchTab($('tab-ajustes').classList.contains('on')?'ajustes':'resumen');}
+ await persistVault();toast('Datos de octubre 2026 restaurados.');}
+async function loadAdvisorVaults(){
+ $('advisorList').innerHTML='<p class="small-note">Cargando…</p>';
+ const {data:profs,error}=await sb.from('profiles').select('id,display_name,role').neq('id',USER.id);
+ if(error){$('advisorList').innerHTML='<p class="small-note">Error al listar usuarios.</p>';return;}
+ if(!profs||!profs.length){$('advisorList').innerHTML='<p class="small-note">Todavía no hay bóvedas asesoradas. Cuando un familiar cree su cuenta y su bóveda, aparecerá aquí en modo de solo lectura.</p>';return;}
+ let out='';
+ for(const p of profs){
+  const {data:vrow}=await sb.from('vault_records').select('payload').eq('owner_id',p.id).maybeSingle();
+  out+='<div class="sec-title">'+(p.display_name||'Usuario')+' · '+(p.role==='advisor'?'asesor':'titular')+'</div>';
+  if(!vrow||!vrow.payload){out+='<p class="small-note">Sin bóveda todavía.</p>';continue;}
+  let env=vrow.payload;if(typeof env==='string'){try{env=JSON.parse(env);}catch(_){env=null;}}
+  if(env&&env.enc){out+='<p class="small-note">Bóveda cifrada de extremo a extremo: no legible para el asesor (privacidad reforzada).</p>';continue;}
+  if(env&&env.data){
+   const d=env.data;
+   const pv=(d.positions||[]).reduce((a,x)=>a+x.val,0);
+   const cs=(d.cash||[]).reduce((a,x)=>a+x.val,0);
+   const dt=(d.debts||[]).reduce((a,x)=>a+x.val,0);
+   out+='<p style="font-size:13px">Cartera <b>'+eur(pv)+'</b> · Liquidez <b>'+eur(cs)+'</b> · Deuda <b>'+eur(dt)+'</b> · Patrimonio neto <b>'+eur(pv+cs-dt)+'</b> · Cierres: '+((d.closings||[]).length)+'</p>';
+   out+='<table class="data"><thead><tr><th>Activo</th><th class="num-h">Valor</th></tr></thead><tbody>'+
+    (d.positions||[]).map(x=>'<tr><td>'+x.name+'</td><td class="num">'+eur(x.val)+'</td></tr>').join('')+'</tbody></table>';}
+  else out+='<p class="small-note">Bóveda en formato no reconocido.</p>';}
+ $('advisorList').innerHTML=out;}
+</script>
+</body>
+</html>
