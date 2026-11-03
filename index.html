@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GPR Solutions · Plataforma Patrimonial v2.3</title>
+<title>GPR Solutions · Plataforma Patrimonial v3.1</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--navy:#16294B;--steel:#8FA3BF;--sky:#A8C6E8;--pale:#EAF1F8;--slate:#55606E;--bone:#F7F5F0;--green:#3A7D44;--red:#B3402E;--mid:#3A5A78}
+:root{--navy:#16294B;--steel:#8FA3BF;--sky:#A8C6E8;--pale:#EAF1F8;--slate:#55606E;--bone:#F7F5F0;--green:#3A7D44;--red:#B3402E;--mid:#3A5A78;--ochre:#B7791F}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Aptos','Calibri','Segoe UI','Helvetica Neue',sans-serif;background:var(--bone);color:var(--navy);font-size:15px;line-height:1.45}
 .screen{display:none;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy) 0%,#0d1a33 100%)}
@@ -77,6 +77,23 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
 .sec-title{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);margin:26px 0 12px;font-weight:700}
 .legend-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .delx{background:none;color:var(--red);font-weight:700;padding:2px 8px;font-size:13px}
+/* ===== v3 · Novedades de estilo ===== */
+.brand .ver{font-size:12px;color:var(--sky);letter-spacing:.04em;font-weight:400;white-space:nowrap}
+.brand .sol{white-space:nowrap}
+@media(max-width:700px){.brand .ver{display:none}header{gap:12px;padding:14px 16px}.brand{min-width:0;overflow:hidden}}
+@media(min-width:700px){#sumCards{grid-template-columns:repeat(3,1fr)}}
+.kcard.k-click{cursor:pointer;transition:box-shadow .15s}
+.kcard.k-click:hover{box-shadow:0 4px 14px rgba(22,41,75,.16)}
+.editx{background:none;color:var(--mid);font-weight:700;padding:2px 6px;font-size:13px}
+.nw{white-space:nowrap}
+.proj-base{font-size:13px;color:var(--slate);margin-bottom:14px}
+.proj-base b{color:var(--navy)}
+.pbar{height:14px;background:var(--pale);border-radius:7px;overflow:hidden;margin:6px 0 4px}
+.pbar>div{height:100%;background:var(--navy);border-radius:7px}
+.msg-ok,.msg-warn{border-radius:8px;padding:12px 14px;font-size:14px;margin-top:14px;line-height:1.5}
+.msg-ok{background:#e9f3eb;color:var(--green);border:1px solid var(--green)}
+.msg-warn{background:#fbf3e6;color:var(--ochre);border:1px solid var(--ochre)}
+.reminder{font-size:12px;color:var(--slate);margin-top:12px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -136,7 +153,7 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
 <!-- APP -->
 <div id="app">
 <header>
-  <div class="brand"><span class="gpr">GPR</span><span class="sol">S O L U T I O N S</span></div>
+  <div class="brand"><span class="gpr">GPR</span><span class="sol">S O L U T I O N S</span><span class="ver">· Plataforma Patrimonial v3.1</span></div>
   <div class="userbox">
     <span class="initials-badge" id="hdrInitials">GP</span>
     <span id="hdrRole"></span>
@@ -185,6 +202,8 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
         <div class="field" style="max-width:120px"><label>Invertido (€)</label><input id="posInv" type="number" step="0.01"></div>
         <div class="field" style="max-width:120px"><label>Valor actual (€)</label><input id="posVal" type="number" step="0.01"></div>
         <div class="field" style="max-width:100px"><label>Aport./mes (€)</label><input id="posMes" type="number" step="0.01"></div>
+        <div class="field" style="max-width:150px"><label>ISIN</label><input id="posIsin" maxlength="12" placeholder="IE00BYX5NX33" style="text-transform:uppercase"></div>
+        <div class="field" style="max-width:110px"><label>TER (% anual)</label><input id="posTer" type="number" step="0.01" min="0"></div>
         <button class="btn-primary" style="height:42px" onclick="addPosition()">+ Nueva posición</button>
       </div>
       <div style="overflow-x:auto"><table class="data" id="posTable"></table></div>
@@ -205,6 +224,35 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
         <button class="btn-primary" style="height:42px" onclick="addDebt()">+ Añadir</button>
       </div>
       <div style="overflow-x:auto"><table class="data" id="debtTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ===== v3 · PROYECCIONES Y SUCESIÓN ===== -->
+  <section class="tabpane" id="tab-proyecciones">
+    <h2 class="ptitle">Proyecciones y Sucesión</h2>
+    <p class="pdesc">Simulación de escenarios a largo plazo y seguimiento del objetivo sucesorio</p>
+    <div class="widget"><h3>Simulador de evolución patrimonial</h3>
+      <p class="proj-base" id="projBase"></p>
+      <div class="toolrow">
+        <div class="field" style="max-width:190px"><label>Rentabilidad base (% anual)</label><input id="prRate" type="number" step="0.01" oninput="onProjInput()"></div>
+        <div class="field" style="max-width:150px"><label>Horizonte (años)</label><input id="prYears" type="number" step="1" min="1" max="60" oninput="onProjInput()"></div>
+        <div class="field" style="max-width:210px"><label>Aportación adicional (€/mes)</label><input id="prExtra" type="number" step="0.01" min="0" oninput="onProjInput()"></div>
+      </div>
+      <canvas class="chart" id="cvProj"></canvas><div id="lgProj"></div>
+      <div class="cardrow" id="projCards" style="margin:18px 0 0"></div>
+      <p class="small-note">Estimación matemática de interés compuesto mensual (aportaciones a principio de mes). Conservador y agresivo: base ∓ 2,50 puntos. No incluye fiscalidad, comisiones reales ni inflación; no constituye asesoramiento financiero regulado y la rentabilidad pasada no garantiza rendimientos futuros.</p>
+    </div>
+    <div class="widget"><h3>Objetivo sucesorio</h3>
+      <div class="toolrow">
+        <div class="field" style="max-width:210px"><label>Importe objetivo por hijo (€)</label><input id="prChild" type="number" step="0.01" min="0" oninput="onProjInput()"></div>
+        <div class="field" style="max-width:190px"><label>Número de beneficiarios</label><input id="prHeirs" type="number" step="1" min="1" max="20" oninput="onProjInput()"></div>
+      </div>
+      <div class="cardrow" id="heirCards" style="margin-bottom:10px"></div>
+      <div class="klabel">Progreso actual hacia la meta</div>
+      <div class="pbar"><div id="heirBar" style="width:0"></div></div>
+      <div class="small-note nw" id="heirBarTxt" style="margin-top:0"></div>
+      <div id="heirMsg"></div>
+      <div class="reminder">▸ Fecha objetivo: octubre de 2042 (75 años del titular).<br>▸ Hito previo: fin de la ayuda a la amortización de vivienda de los hijos.<br>Objetivo personal editable, no un compromiso jurídico: la planificación sucesoria real debe revisarse con notario conforme a la normativa civil foral aplicable.</div>
     </div>
   </section>
 
@@ -274,6 +322,28 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
   <button class="btn-primary" style="margin-top:16px" onclick="document.getElementById('ritualModal').classList.remove('on')">Entendido</button>
 </div></div>
 
+<!-- ===== v3 · MODAL DE EDICIÓN DE POSICIÓN ===== -->
+<div class="modal-bg" id="editModal"><div class="modal">
+  <h3 style="margin-bottom:14px">Editar posición</h3>
+  <div class="field"><label>Nombre</label><input id="edName"></div>
+  <div class="toolrow">
+    <div class="field"><label>Grupo</label><select id="edGroup"></select></div>
+    <div class="field"><label>Aport./mes (€)</label><input id="edMes" type="number" step="0.01"></div>
+  </div>
+  <div class="toolrow">
+    <div class="field"><label>Invertido (€)</label><input id="edInv" type="number" step="0.01"></div>
+    <div class="field"><label>Valor actual (€)</label><input id="edVal" type="number" step="0.01"></div>
+  </div>
+  <div class="toolrow">
+    <div class="field"><label>ISIN</label><input id="edIsin" maxlength="12" style="text-transform:uppercase"></div>
+    <div class="field"><label>TER (% anual)</label><input id="edTer" type="number" step="0.01" min="0"></div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+    <button class="btn-secondary" onclick="closeEdit()">Cancelar</button>
+    <button class="btn-primary" onclick="saveEdit()">Guardar cambios</button>
+  </div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 <div class="chart-tip" id="tip"></div>
 
@@ -302,8 +372,11 @@ function nf(v,dec){dec=(dec===undefined)?2:dec;
   let ip=Math.floor(r/Math.pow(10,dec)),fp=(r%Math.pow(10,dec)).toString().padStart(dec,'0');
   const s=ip.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
   return (neg?'-':'')+s+(dec>0?','+fp:'');}
-const eur=(v,sign)=>((sign&&v>0)?'+':'')+nf(v)+' €';
-const pct=(v,sign)=>((sign&&v>0)?'+':'')+nf(v)+' %';
+/* v3: espacio fino indivisible (U+202F) entre número y símbolo:
+   el «€» y el «%» no pueden descolgarse nunca a la línea inferior. */
+const NB='\u202F';
+const eur=(v,sign)=>((sign&&v>0)?'+':'')+nf(v)+NB+'€';
+const pct=(v,sign)=>((sign&&v>0)?'+':'')+nf(v)+NB+'%';
 
 /* ============ CRIPTO ============ */
 const b64u={e:b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
@@ -320,6 +393,8 @@ async function decJSON(env,key){
  return JSON.parse(new TextDecoder().decode(pt));}
 
 /* ============ SEMILLA OCTUBRE ============ */
+/* v3: parámetros por defecto del simulador y del objetivo sucesorio */
+const PROJ_DEF={rate:6.5,years:16,extra:0,perChild:40000,heirs:3};
 function seedData(){return{
  meta:{initials:'GP',age:null},
  positions:[
@@ -337,12 +412,13 @@ function seedData(){return{
  cash:[{name:'MyInvestor',val:1871.31},{name:'CaixaBank',val:7748.38},{name:'BBVA',val:84.91}],
  debts:[{name:'Préstamo BBVA',val:14557.99,fee:175.99}],
  movimientos:[],goals:[],bitacora:[],
- closings:[{date:'2026-10-31',note:'Cierre inicial',portfolio:29753.25,cash:9704.60,debt:14557.99,net:24899.86}]};}
+ closings:[{date:'2026-10-31',note:'Cierre inicial',portfolio:29753.25,cash:9704.60,debt:14557.99,net:24899.86}],
+ proyecciones:{...PROJ_DEF}};}
 function seedEmpty(){const d=seedData();d.positions=[];d.cash=[];d.debts=[];d.movimientos=[];d.goals=[];d.bitacora=[];d.closings=[];d.meta={initials:'',age:null};return d;}
 
 /* ============ ESTADO ============ */
 let USER=null,PROFILE=null,DATA=null,masterKey=null,HAS_MASTER=false,mfaFactorId=null,_enroll=null,_pendingRow=null,_newSalt=null;
-const TABS=[['resumen','Resumen'],['objetivos','Objetivos y Recomendaciones'],['cartera','Cartera'],['movimientos','Movimientos'],['historial','Historial'],['ajustes','Ajustes']];
+const TABS=[['resumen','Resumen'],['objetivos','Objetivos y Recomendaciones'],['cartera','Cartera'],['proyecciones','Proyecciones y Sucesión'],['movimientos','Movimientos'],['historial','Historial'],['ajustes','Ajustes']];
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
 function showErr(i,m){const e=$(i);e.textContent=m;e.style.display='block';}
 function hideErr(i){$(i).style.display='none';}
@@ -450,6 +526,7 @@ async function persistVault(){
  if(error){toast('Error al guardar: '+error.message);return false;}
  return true;}
 async function enterApp(){
+ ensureProj();
  screen(null);$('app').classList.add('active');
  $('hdrInitials').textContent=((DATA.meta&&DATA.meta.initials)||'GP').toUpperCase();
  $('hdrRole').textContent=PROFILE.role==='advisor'?'Asesor':'Titular de bóveda';
@@ -457,6 +534,7 @@ async function enterApp(){
  TABS.forEach(([id,label])=>{const b=document.createElement('button');b.textContent=label;b.dataset.tab=id;b.onclick=()=>switchTab(id);bar.appendChild(b);});
  const sel=$('posGroup');sel.innerHTML='';
  GROUPS.filter(g=>g.id!=='liq').forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name;sel.appendChild(o);});
+ $('edGroup').innerHTML=sel.innerHTML;
  const t=new Date().toISOString().slice(0,10);
  $('mvDate').value=t;$('bitDate').value=t;$('closeDate').value=t;
  switchTab('resumen');}
@@ -465,6 +543,7 @@ function switchTab(id){
  document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('on',p.id==='tab-'+id));
  if(id==='resumen'){renderSummary();drawWidget('cvGroups',drawGroupsChart);drawWidget('cvComp',drawCompChart);}
  else if(id==='cartera')renderTables();
+ else if(id==='proyecciones')renderProj();
  else if(id==='movimientos')renderMovs();
  else if(id==='historial'){renderCloseList();drawWidget('cvSerie',drawSerie);drawWidget('cvReturns',drawReturns);}
  else if(id==='objetivos')renderGoalsBitacora();
@@ -481,6 +560,30 @@ const sumFee=()=>DATA.debts.reduce((a,d)=>a+(d.fee||0),0);
 const activoTotal=()=>sumPos()+sumCash();
 const netWorth=()=>activoTotal()-sumDebt();
 
+/* ============ v3 · CÁLCULOS DE PROYECCIÓN ============
+   FV = C·(1+i)^n + A·[((1+i)^n − 1)/i]·(1+i)   (aportación a principio de mes)
+   i = rentabilidad/12 ; n = años × 12. Las cuotas de deuda son neutras. */
+function ensureProj(){
+ const p=(DATA.proyecciones&&typeof DATA.proyecciones==='object')?DATA.proyecciones:{};
+ const num=(v,d)=>(typeof v==='number'&&isFinite(v))?v:d;
+ DATA.proyecciones={
+  rate:num(p.rate,PROJ_DEF.rate),
+  years:Math.min(60,Math.max(1,Math.round(num(p.years,PROJ_DEF.years)))),
+  extra:Math.max(0,num(p.extra,PROJ_DEF.extra)),
+  perChild:Math.max(0,num(p.perChild,PROJ_DEF.perChild)),
+  heirs:Math.min(20,Math.max(1,Math.round(num(p.heirs,PROJ_DEF.heirs))))};
+ return DATA.proyecciones;}
+const annuityFactor=(ratePct,years)=>{const i=ratePct/100/12,n=Math.round(years*12);
+ if(Math.abs(i)<1e-12)return n;return ((Math.pow(1+i,n)-1)/i)*(1+i);};
+function fv(C,A,ratePct,years){const i=ratePct/100/12,n=Math.round(years*12);
+ return C*Math.pow(1+i,n)+A*annuityFactor(ratePct,years);}
+const projMonthly=()=>sumMes()+(DATA.proyecciones.extra||0);
+const projYear=()=>new Date().getFullYear()+DATA.proyecciones.years;
+function projScenarios(years){
+ const P=DATA.proyecciones,C=netWorth(),A=projMonthly(),y=(years===undefined)?P.years:years;
+ return {cons:fv(C,A,P.rate-2.5,y),base:fv(C,A,P.rate,y),agr:fv(C,A,P.rate+2.5,y)};}
+const heirGoal=()=>DATA.proyecciones.perChild*DATA.proyecciones.heirs;
+
 /* ============ RESUMEN (tarjetas centradas, dos líneas en rentabilidad) ============ */
 function renderSummary(){
  const pv=sumPos(),iv=sumInv(),lat=pv-iv,rp=iv>0?((pv/iv-1)*100):0;
@@ -489,16 +592,22 @@ function renderSummary(){
   (s2?(s1+'<br>'+s2):(s1||''))+'</div></div>';
  const clsLat=lat>=0?'pos':'neg';
  $('sumCards').innerHTML=
-  k('','Valor de cartera',eur(pv),'Aportaciones: '+eur(sumMes())+'/mes')+
+  k('','Valor de cartera',eur(pv),'Aportaciones: '+eur(sumMes())+' al mes')+
   k('','Rentabilidad latente','<span class="'+clsLat+'">'+pct(rp,true)+'</span>','<span class="'+clsLat+'">'+eur(lat,true)+'</span>','sobre '+eur(iv)+' invertidos')+
   k('k-sky','Liquidez bancaria',eur(cs),at>0?pct(cs/at*100)+' del activo total':'')+
-  k('k-red','Deuda pendiente',eur(dt),'Cuota: '+eur(sumFee())+'/mes')+
-  k('k-green','Patrimonio neto',eur(nw),at>0?'Activo total: '+eur(at):'');}
+  k('k-red','Deuda pendiente',eur(dt),'Cuota: '+eur(sumFee())+' al mes')+
+  k('k-green','Patrimonio neto',eur(nw),at>0?'Activo total: '+eur(at):'')+
+  /* v3: sexta tarjeta · Proyección (escenario base con parámetros guardados) */
+  '<div class="kcard k-sky k-click" onclick="switchTab(\'proyecciones\')" title="Ir a Proyecciones y Sucesión"><div class="klabel">Proyección '+projYear()+'</div><div class="kvalue">'+
+   eur(projScenarios().base)+'</div><div class="ksub">escenario base · '+pct(DATA.proyecciones.rate)+' anual</div></div>';}
 
 /* ============ GRÁFICOS v2.2 · GEOMETRÍA ROBUSTA ============ */
 function prepCanvas(cv,H){
  const dpr=window.devicePixelRatio||1;
- const w=cv.parentElement.clientWidth;
+ /* v3: anchura útil = ancho interior del contenedor sin su relleno lateral
+    (en v2.3 se tomaba con relleno y el lado derecho quedaba recortado) */
+ const pe=cv.parentElement,cs=getComputedStyle(pe);
+ const w=Math.floor(pe.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0));
  if(!w||w<10)return null;
  H=Math.max(110,Math.min(H||200,460));
  cv.width=w*dpr;cv.height=H*dpr;cv.style.width=w+'px';cv.style.height=H+'px';
@@ -511,7 +620,8 @@ function drawWidget(cid,fn){
   fn(cv);});}
 window.addEventListener('resize',()=>{
  if($('tab-resumen').classList.contains('on')){drawWidget('cvGroups',drawGroupsChart);drawWidget('cvComp',drawCompChart);}
- if($('tab-historial').classList.contains('on')){drawWidget('cvSerie',drawSerie);drawWidget('cvReturns',drawReturns);}});
+ if($('tab-historial').classList.contains('on')){drawWidget('cvSerie',drawSerie);drawWidget('cvReturns',drawReturns);}
+ if($('tab-proyecciones').classList.contains('on'))drawWidget('cvProj',drawProj);});
 function emptyChart(ctx,W,H,msg){ctx.fillStyle='#55606E';ctx.font='13px Calibri, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(msg||'Sin datos todavía',W/2,H/2);}
 function fitLabel(ctx,text,maxPx){
  if(ctx.measureText(text).width<=maxPx)return text;
@@ -541,7 +651,7 @@ function drawGroupsChart(cv){
   ctx.fillStyle=g.color;ctx.fillRect(ml,y-bh/2,bw,bh);
   ctx.fillStyle='#16294B';
   ctx.fillText(fitLabel(ctx,g.name,maxLbl),0,y);
-  const vt=nf(g.val)+' € · '+nf(g.val/tot*100)+' %';
+  const vt=nf(g.val)+NB+'€ · '+nf(g.val/tot*100)+NB+'%';
   const vx=ml+bw+10;
   if(vx+ctx.measureText(vt).width<=W){ctx.fillText(vt,vx,y);}
   else{ctx.textAlign='right';ctx.fillText(vt,W,y);ctx.textAlign='left';}
@@ -566,7 +676,7 @@ function drawCompChart(cv){
   ctx.fillStyle=gColor(p.group);ctx.fillRect(ml,y-bh/2,bw,bh);
   ctx.fillStyle='#16294B';
   ctx.fillText(fitLabel(ctx,p.name,maxLbl),0,y);
-  const vt=nf(p.val)+' € · '+nf(p.val/tot*100)+' %';
+  const vt=nf(p.val)+NB+'€ · '+nf(p.val/tot*100)+NB+'%';
   const vx=ml+bw+10;
   if(vx+ctx.measureText(vt).width<=W){ctx.fillText(vt,vx,y);}
   else{ctx.textAlign='right';ctx.fillText(vt,W,y);ctx.textAlign='left';}
@@ -585,7 +695,7 @@ function drawSerie(cv){
  const X=i=>ml+(W-ml-mr)*(i/(n-1));
  const Y=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));
  ctx.strokeStyle='#EAF1F8';ctx.fillStyle='#55606E';ctx.font='11px Calibri, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
- for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);ctx.beginPath();ctx.moveTo(ml,y);ctx.lineTo(W-mr,y);ctx.stroke();ctx.fillText(nf(v,0)+' €',ml-8,y);}
+ for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);ctx.beginPath();ctx.moveTo(ml,y);ctx.lineTo(W-mr,y);ctx.stroke();ctx.fillText(nf(v,0)+NB+'€',ml-8,y);}
  ctx.textAlign='center';ctx.textBaseline='top';
  const fy=+cls[0].date.slice(0,4),fm=+cls[0].date.slice(5,7);
  for(let m=0;m<48;m++){
@@ -611,12 +721,13 @@ function drawReturns(cv){
  const ml=80,mr=20,mt=12,mb=30,n=Math.max(rets.length,2);
  const hi=Math.max(...rets.map(r=>r.r),1),lo=Math.min(...rets.map(r=>r.r),-1);
  const X=i=>ml+(W-ml-mr)*((i+0.5)/n);
- const Y=v=>mt+(H-mt-mb)*(1-(v+lo)/(hi-lo));
+ /* v3: corregido (v−lo); en v2.3 era (v+lo) y descolocaba barras y etiquetas */
+ const Y=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));
  ctx.strokeStyle='#8FA3BF';ctx.beginPath();ctx.moveTo(ml,Y(0));ctx.lineTo(W-mr,Y(0));ctx.stroke();
  ctx.fillStyle='#55606E';ctx.font='11px Calibri, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
- ctx.fillText((hi>0?'+':'')+nf(hi)+' %',ml-8,Y(hi));
- ctx.fillText(nf(lo)+' %',ml-8,Y(lo));
- ctx.fillText('0,00 %',ml-8,Y(0));
+ if(Math.abs(Y(hi)-Y(0))>=14)ctx.fillText(pct(hi,true),ml-8,Y(hi));
+ if(Math.abs(Y(lo)-Y(0))>=14)ctx.fillText(pct(lo),ml-8,Y(lo));
+ ctx.fillText(pct(0),ml-8,Y(0));
  rets.forEach((r,i)=>{
   ctx.fillStyle=r.r>=0?'#3A7D44':'#B3402E';
   const w=Math.min(18,(W-ml-mr)/n*0.7);
@@ -637,20 +748,116 @@ document.addEventListener('mousemove',e=>{
   tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-10)+'px';}
  else tip.style.display='none';});
 
+/* ============ v3 · PROYECCIONES Y SUCESIÓN ============ */
+const PROJ_COLORS={cons:'#8FA3BF',base:'#16294B',agr:'#3A5A78'};
+let _projTimer=null;
+function renderProj(){
+ const P=ensureProj();
+ $('prRate').value=P.rate;$('prYears').value=P.years;$('prExtra').value=P.extra;
+ $('prChild').value=P.perChild;$('prHeirs').value=P.heirs;
+ updateProjView();}
+function onProjInput(){
+ const P=DATA.proyecciones,v=id=>parseFloat($(id).value);
+ if(isFinite(v('prRate')))P.rate=Math.min(30,Math.max(-10,v('prRate')));
+ if(isFinite(v('prYears')))P.years=Math.min(60,Math.max(1,Math.round(v('prYears'))));
+ P.extra=isFinite(v('prExtra'))?Math.max(0,v('prExtra')):0;
+ if(isFinite(v('prChild')))P.perChild=Math.max(0,v('prChild'));
+ if(isFinite(v('prHeirs')))P.heirs=Math.min(20,Math.max(1,Math.round(v('prHeirs'))));
+ updateProjView();
+ clearTimeout(_projTimer);_projTimer=setTimeout(()=>persistVault(),700);}
+function updateProjView(){
+ const P=DATA.proyecciones,C=netWorth(),s=projScenarios(),yr=projYear();
+ $('projBase').innerHTML='Partida: patrimonio neto actual <b class="nw">'+eur(C)+'</b> · aportaciones vigentes <b class="nw">'+eur(sumMes())+' al mes</b>'+
+  (P.extra>0?' + adicional <b class="nw">'+eur(P.extra)+' al mes</b>':'')+' (las cuotas de deuda no computan como aportación).';
+ const card=(cls,l,v,sub)=>'<div class="kcard '+cls+'"><div class="klabel">'+l+'</div><div class="kvalue">'+v+'</div><div class="ksub">'+sub+'</div></div>';
+ $('projCards').innerHTML=
+  card('k-sky','Conservador · '+yr,eur(s.cons),pct(P.rate-2.5)+' anual')+
+  card('','Base · '+yr,eur(s.base),pct(P.rate)+' anual')+
+  card('k-blue','Agresivo · '+yr,eur(s.agr),pct(P.rate+2.5)+' anual')+
+  card('k-sky','Horquilla de incertidumbre',eur(s.agr-s.cons),'agresivo − conservador');
+ $('projCards').querySelector('.kcard').style.borderTopColor=PROJ_COLORS.cons;
+ drawWidget('cvProj',drawProj);
+ /* Objetivo sucesorio */
+ const goal=heirGoal(),prog=goal>0?C/goal*100:null;
+ $('heirCards').innerHTML=
+  card('','Meta total',eur(goal),eur(P.perChild)+' × '+P.heirs+' beneficiario'+(P.heirs===1?'':'s'))+
+  card('k-green','Patrimonio neto actual',eur(C),'punto de partida')+
+  card('k-sky','Progreso actual',prog===null?'—':pct(prog),'sobre la meta total');
+ $('heirBar').style.width=(prog===null?0:Math.max(0,Math.min(100,prog)))+'%';
+ $('heirBarTxt').textContent=prog===null?'—':pct(prog)+' de '+eur(goal);
+ let msg;
+ if(goal<=0)msg='';
+ else if(s.base>=goal)
+  msg='<div class="msg-ok">El escenario base ('+'<b class="nw">'+eur(s.base)+'</b> en '+yr+') supera la meta total de <b class="nw">'+eur(goal)+'</b>, con un colchón de <b class="nw">'+eur(s.base-goal)+'</b>.</div>';
+ else{
+  const f=annuityFactor(P.rate,P.years);
+  const need=f>0?Math.ceil(((goal-s.base)/f)/10)*10:null;
+  msg='<div class="msg-warn">El escenario base ('+'<b class="nw">'+eur(s.base)+'</b> en '+yr+') no alcanza la meta total de <b class="nw">'+eur(goal)+'</b>: desvío de <b class="nw">'+eur(goal-s.base)+'</b>. '+
+   'Aportación mensual adicional necesaria para cerrarlo: <b class="nw">'+(need===null?'—':eur(need)+' al mes')+'</b> (redondeada al alza a múltiplos de 10'+NB+'€).</div>';}
+ $('heirMsg').innerHTML=msg;}
+/* Etiqueta de eje compacta: miles («k») o millones («M») */
+function axisLbl(v){const a=Math.abs(v);
+ if(a>=1e6)return nf(v/1e6)+NB+'M€';
+ if(a>=1e3)return nf(v/1e3,0)+NB+'k€';
+ return nf(v,0)+NB+'€';}
+function drawProj(cv){
+ const P=DATA.proyecciones,Y=P.years,y0=new Date().getFullYear();
+ const H=280;
+ const c=prepCanvas(cv,H);if(!c)return;
+ const {ctx,W}=c;
+ const ser={cons:[],base:[],agr:[]};
+ for(let y=0;y<=Y;y++){const s=projScenarios(y);ser.cons.push(s.cons);ser.base.push(s.base);ser.agr.push(s.agr);}
+ const all=[...ser.cons,...ser.base,...ser.agr];
+ let lo=Math.min(0,...all),hi=Math.max(...all);if(hi<=lo)hi=lo+1;
+ hi+=(hi-lo)*0.08;
+ const ml=74,mr=24,mt=14,mb=28;
+ const X=i=>ml+(W-ml-mr)*(Y>0?i/Y:0);
+ const Yp=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));
+ ctx.strokeStyle='#EAF1F8';ctx.fillStyle='#55606E';ctx.font='11px Calibri, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+ for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,yy=Yp(v);ctx.beginPath();ctx.moveTo(ml,yy);ctx.lineTo(W-mr,yy);ctx.stroke();ctx.fillText(axisLbl(v),ml-8,yy);}
+ ctx.textAlign='center';ctx.textBaseline='top';
+ const step=Math.max(1,Math.ceil((Y+1)*38/(W-ml-mr)));
+ for(let y=0;y<=Y;y+=step){if(y!==Y&&Y-y<step*0.75)continue;ctx.fillText(String(y0+y),X(y),H-mb+6);}
+ if(Y%step!==0||Y===0){ctx.textAlign='right';ctx.fillText(String(y0+Y),W,H-mb+6);ctx.textAlign='center';}
+ ['cons','agr','base'].forEach(key=>{
+  ctx.strokeStyle=PROJ_COLORS[key];ctx.lineWidth=key==='base'?2.8:2;ctx.beginPath();
+  ser[key].forEach((v,i)=>{const x=X(i),yy=Yp(v);i?ctx.lineTo(x,yy):ctx.moveTo(x,yy);});ctx.stroke();});
+ ctx.lineWidth=1;
+ cv._proj=ser.base.map((v,i)=>({x:X(i),year:y0+i,cons:ser.cons[i],base:v,agr:ser.agr[i]}));
+ $('lgProj').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--slate);margin-top:10px">'+
+  [['cons','Conservador · '+pct(P.rate-2.5)],['base','Base · '+pct(P.rate)],['agr','Agresivo · '+pct(P.rate+2.5)]]
+  .map(([k,l])=>'<span class="nw"><span class="legend-dot" style="background:'+PROJ_COLORS[k]+'"></span>'+l+'</span>').join('')+'</div>';}
+/* Tooltip del simulador (no interfiere con el de la serie histórica) */
+document.addEventListener('mousemove',e=>{
+ const cv=$('cvProj'),tip=$('tip');
+ if(!cv||!cv._proj||!cv.offsetParent)return;
+ const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+ if(x<0||y<0||x>r.width||y>r.height){tip.style.display='none';return;}
+ let best=null,bd=1e9;
+ cv._proj.forEach(p=>{const d=Math.abs(p.x-x);if(d<bd){bd=d;best=p;}});
+ if(best&&bd<30){
+  tip.style.display='block';
+  tip.textContent=best.year+' · Cons. '+eur(best.cons)+' · Base '+eur(best.base)+' · Agr. '+eur(best.agr);
+  tip.style.left=Math.min(e.clientX+14,window.innerWidth-tip.offsetWidth-8)+'px';tip.style.top=(e.clientY-10)+'px';}
+ else tip.style.display='none';});
+
 /* ============ TABLAS ============ */
 function delBtn(fn,arg){return '<button class="delx" onclick="'+fn+'('+arg+')">✕</button>';}
 function renderTables(){
- let h='<thead><tr><th>Activo</th><th>Grupo</th><th class="num-h">Aport./mes</th><th class="num-h">Invertido</th><th class="num-h">Valor actual</th><th class="num-h">Rentab.</th><th class="num-h">Peso</th><th></th></tr></thead><tbody>';
- const tp=sumPos(),ti=sumInv(),tm=sumMes();
+ let h='<thead><tr><th>Activo</th><th>Grupo</th><th class="num-h">Aport./mes</th><th class="num-h">Invertido</th><th class="num-h">Valor actual</th><th class="num-h">Rentab.</th><th class="num-h">TER</th><th class="num-h">Peso</th><th></th></tr></thead><tbody>';
+ const tp=sumPos(),ti=sumInv(),tm=sumMes(),tw=terWeighted();
  DATA.positions.forEach((p,i)=>{
   const ret=(p.inv>0&&p.val>0)?(p.val/p.inv-1)*100:null;
   const w=tp>0?p.val/tp*100:null;
   h+='<tr><td>'+p.name+'</td><td><span class="tagpill" style="background:'+gColor(p.group)+'">'+gName(p.group)+'</span></td>'+
    '<td class="num">'+eur(p.mes||0)+'</td><td class="num">'+eur(p.inv)+'</td><td class="num">'+eur(p.val)+'</td>'+
    '<td class="num '+(ret===null?'':(ret>=0?'pos':'neg'))+'">'+(ret===null?'—':pct(ret,true))+'</td>'+
-   '<td class="num">'+(w===null?'—':pct(w))+'</td><td>'+delBtn('delPos',i)+'</td></tr>';});
+   '<td class="num">'+(hasTer(p)?pct(p.ter):'—')+'</td>'+
+   '<td class="num">'+(w===null?'—':pct(w))+'</td><td class="nw"><button class="editx" title="Editar" onclick="openEdit('+i+')">✎</button>'+delBtn('delPos',i)+'</td></tr>';});
  h+='<tr class="total"><td>Total vigente</td><td></td><td class="num">'+eur(tm)+'</td><td class="num">'+eur(ti)+'</td><td class="num">'+eur(tp)+'</td>'+
-  '<td class="num '+(tp>=ti?'pos':'neg')+'">'+(ti>0?pct((tp/ti-1)*100,true):'—')+'</td><td class="num">100,00 %</td><td></td></tr></tbody>';
+  '<td class="num '+(tp>=ti?'pos':'neg')+'">'+(ti>0?pct((tp/ti-1)*100,true):'—')+'</td>'+
+  '<td class="num" title="TER ponderado por valor (solo posiciones con TER informado)">'+(tw===null?'—':pct(tw))+'</td>'+
+  '<td class="num">'+pct(100)+'</td><td></td></tr></tbody>';
  $('posTable').innerHTML=h;
  h='<thead><tr><th>Entidad</th><th class="num-h">Saldo</th><th></th></tr></thead><tbody>';
  DATA.cash.forEach((cc,i)=>{h+='<tr><td>'+cc.name+'</td><td class="num">'+eur(cc.val)+'</td><td>'+delBtn('delCash',i)+'</td></tr>';});
@@ -660,11 +867,37 @@ function renderTables(){
  DATA.debts.forEach((d,i)=>{h+='<tr><td>'+d.name+'</td><td class="num">'+eur(d.val)+'</td><td class="num">'+eur(d.fee||0)+'</td><td>'+delBtn('delDebt',i)+'</td></tr>';});
  h+='<tr class="total"><td>Total deuda</td><td class="num">'+eur(sumDebt())+'</td><td class="num">'+eur(sumFee())+'</td><td></td></tr></tbody>';
  $('debtTable').innerHTML=h;}
+/* v3: ISIN y TER */
+const ISIN_RE=/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+const hasTer=p=>typeof p.ter==='number'&&isFinite(p.ter);
+function terWeighted(){
+ let num=0,den=0;
+ DATA.positions.forEach(p=>{if(hasTer(p)&&p.val>0){num+=p.ter*p.val;den+=p.val;}});
+ return den>0?num/den:null;}
+const readIsin=id=>$(id).value.trim().toUpperCase().replace(/\s+/g,'');
+const readTer=id=>{const s=$(id).value.trim();if(s==='')return null;const v=parseFloat(s);return isFinite(v)&&v>=0?v:null;};
+const isinWarn=isin=>(isin&&!ISIN_RE.test(isin))?' Aviso: el ISIN «'+isin+'» no tiene el formato estándar (12 caracteres: 2 letras, 9 alfanuméricos y 1 dígito).':'';
 async function addPosition(){
  const n=$('posName').value.trim();if(!n){toast('Indique un nombre para la posición.');return;}
- DATA.positions.push({name:n,group:$('posGroup').value,inv:+$('posInv').value||0,val:+$('posVal').value||0,mes:+$('posMes').value||0,isin:'',ter:null});
- $('posName').value='';$('posInv').value='';$('posVal').value='';$('posMes').value='';
- renderTables();await persistVault();toast('Posición añadida.');}
+ const isin=readIsin('posIsin'),ter=readTer('posTer');
+ DATA.positions.push({name:n,group:$('posGroup').value,inv:+$('posInv').value||0,val:+$('posVal').value||0,mes:+$('posMes').value||0,isin,ter});
+ $('posName').value='';$('posInv').value='';$('posVal').value='';$('posMes').value='';$('posIsin').value='';$('posTer').value='';
+ renderTables();await persistVault();toast('Posición añadida.'+isinWarn(isin));}
+/* v3: modal de edición de posición */
+let _editIdx=null;
+function openEdit(i){
+ const p=DATA.positions[i];if(!p)return;_editIdx=i;
+ $('edName').value=p.name||'';$('edGroup').value=p.group||'otros';
+ $('edInv').value=p.inv||0;$('edVal').value=p.val||0;$('edMes').value=p.mes||0;
+ $('edIsin').value=p.isin||'';$('edTer').value=hasTer(p)?p.ter:'';
+ $('editModal').classList.add('on');$('edName').focus();}
+function closeEdit(){$('editModal').classList.remove('on');_editIdx=null;}
+async function saveEdit(){
+ const p=DATA.positions[_editIdx];if(!p){closeEdit();return;}
+ const n=$('edName').value.trim();if(!n){toast('Indique un nombre para la posición.');return;}
+ const isin=readIsin('edIsin');
+ Object.assign(p,{name:n,group:$('edGroup').value,inv:+$('edInv').value||0,val:+$('edVal').value||0,mes:+$('edMes').value||0,isin,ter:readTer('edTer')});
+ closeEdit();renderTables();await persistVault();toast('Posición actualizada.'+isinWarn(isin));}
 async function delPos(i){DATA.positions.splice(i,1);renderTables();await persistVault();}
 async function addCash(){const n=$('cashName').value.trim();if(!n)return;DATA.cash.push({name:n,val:+$('cashVal').value||0});$('cashName').value='';$('cashVal').value='';renderTables();await persistVault();}
 async function delCash(i){DATA.cash.splice(i,1);renderTables();await persistVault();}
@@ -743,7 +976,8 @@ function exportVault(){
 async function restoreOctober(){
  if(!confirm('Esto SUSTITUIRÁ la bóveda actual por los datos de octubre 2026. ¿Continuar?'))return;
  const m={initials:(DATA.meta&&DATA.meta.initials)||'GP',age:(DATA.meta&&DATA.meta.age)||null};
- DATA=seedData();DATA.meta=m;
+ const pr=DATA.proyecciones?{...DATA.proyecciones}:null;
+ DATA=seedData();DATA.meta=m;if(pr)DATA.proyecciones=pr;ensureProj();
  if($('app').classList.contains('active')){
   $('hdrInitials').textContent=(m.initials||'GP').toUpperCase();
   switchTab($('tab-ajustes').classList.contains('on')?'ajustes':'resumen');}
@@ -772,4 +1006,30 @@ async function loadAdvisorVaults(){
  $('advisorList').innerHTML=out;}
 </script>
 </body>
+<!-- =====================================================================
+REGISTRO DE CAMBIOS
+v3 · 03/11/2026
+ · Nueva pestaña «Proyecciones y Sucesión» (4.ª, entre Cartera y Movimientos):
+   simulador de tres escenarios (base ∓ 2,50 puntos) por interés compuesto
+   mensual con aportación a principio de mes, gráfico en canvas, tarjetas de
+   resultado y horquilla; módulo de objetivo sucesorio (meta total, progreso,
+   colchón o aportación adicional necesaria redondeada a múltiplos de 10 €).
+ · Parámetros persistidos en DATA.proyecciones dentro del mismo sobre de la
+   bóveda; bóvedas v2.3 sin ese objeto se inicializan con valores por defecto.
+ · Cartera: campos ISIN (validación suave) y TER; columna TER y TER ponderado
+   (solo posiciones con TER informado y valor > 0); modal de edición simple.
+ · Resumen: sexta tarjeta «Proyección <año>» (año dinámico = año actual +
+   horizonte), navega a la nueva pestaña; rejilla de tarjetas 3 × 2.
+ · Formato: eur() y pct() usan espacio fino indivisible (U+202F); «100,00 %»
+   y «0,00 %» fijos pasan por pct().
+ · Restaurar octubre 2026 conserva perfil y parámetros de proyección.
+ · Correcciones heredadas de v2.3: prepCanvas descuenta el relleno del
+   contenedor (el lado derecho de los gráficos quedaba recortado) y
+   drawReturns usa (v−lo) en la escala vertical (antes (v+lo)).
+ · Cabecera con «· Plataforma Patrimonial v3» (oculto en pantallas estrechas).
+ · DEUDA TÉCNICA: los titulares (rol member) aún guardan su bóveda en claro
+   ({enc:false}); se estudiará el cifrado para titulares en una futura versión.
+v3.1 · 03/11/2026 · unificación de espacio fino (U+202F) en canvas y reformulación de sufijos /mes
+v2.3 · Refinamiento de formato numérico y geometría de gráficos.
+====================================================================== -->
 </html>
