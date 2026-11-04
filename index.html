@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GPR Solutions · Plataforma Patrimonial v3.1</title>
+<title>GPR Solutions · Plataforma Patrimonial v5</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--navy:#16294B;--steel:#8FA3BF;--sky:#A8C6E8;--pale:#EAF1F8;--slate:#55606E;--bone:#F7F5F0;--green:#3A7D44;--red:#B3402E;--mid:#3A5A78;--ochre:#B7791F}
@@ -94,6 +94,37 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
 .msg-ok{background:#e9f3eb;color:var(--green);border:1px solid var(--green)}
 .msg-warn{background:#fbf3e6;color:var(--ochre);border:1px solid var(--ochre)}
 .reminder{font-size:12px;color:var(--slate);margin-top:12px;line-height:1.7}
+/* ===== v3.2 · Aviso persistente de ISIN no estándar (no bloqueante) ===== */
+.field.isin-f{position:relative}
+input.inp-bad{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+input.inp-bad:focus{outline-color:#e7b3aa}
+.isin-hint{display:none;position:absolute;left:0;top:calc(100% + 2px);font-size:11px;line-height:1.2;color:var(--red);white-space:nowrap}
+.isin-hint.on{display:block}
+/* ===== v4 · Acceso: QR de alta TOTP, mensajes informativos y pantalla de incidencias ===== */
+.error-msg.info{background:var(--pale);color:var(--navy);border-color:var(--sky)}
+.qr-box{display:flex;justify-content:center;align-items:center;background:var(--pale);border:1px solid var(--sky);border-radius:10px;padding:12px;margin:4px 0 8px}
+.qr-box img{width:200px;height:200px;display:block;background:#fff;image-rendering:pixelated;image-rendering:crisp-edges}
+.secret-alt{font-size:11.5px;color:var(--slate);text-align:center;line-height:1.4}
+.secret-box.secret-sm{font-size:12px;padding:6px 8px;margin:4px 0 10px}
+#msgBtns{display:flex;flex-direction:column;gap:10px}
+/* ===== v5 · Vista de asesorado en modo lectura (5.1) y eliminación de asesorados (5.2) ===== */
+.ro-wrap{display:none;align-items:center;gap:10px;min-width:0;flex:1;justify-content:center;margin:0 14px}
+body.ro .ro-wrap{display:flex}
+/* Corrección de contraste (1.4): azul marino en negrita sobre azul cielo */
+.ro-banner{background:var(--sky);color:var(--navy);font-weight:700;font-size:13px;letter-spacing:.02em;padding:7px 14px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ro-back{padding:8px 14px;font-size:13px;white-space:nowrap;flex-shrink:0}
+/* Pantallas estrechas: banner y botón en una segunda línea de la cabecera */
+@media(max-width:700px){body.ro header{flex-wrap:wrap;row-gap:10px}body.ro .ro-wrap{order:3;flex-basis:100%;margin:0;gap:8px;justify-content:space-between}.ro-banner{font-size:11.5px;padding:6px 10px}.ro-back{padding:7px 10px;font-size:12px}body.ro nav.tabs{top:104px}}
+body.ro .wr,body.ro .delx,body.ro .editx{display:none!important}
+.adv-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--pale)}
+.adv-row:last-child{border-bottom:none}
+.adv-name{font-weight:600;font-size:14px;min-width:0;overflow-wrap:anywhere}
+.adv-acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn-sm{padding:7px 12px;font-size:13px}
+.dlg-sub{font-size:14px;font-weight:700;margin:-4px 0 14px;overflow-wrap:anywhere}
+.dlg-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
+#delDoneModal .modal{width:min(560px,92vw);max-height:92vh;overflow-y:auto}
+#delDoneModal p,#delDoneModal li{font-size:14px;line-height:1.55}
 </style>
 </head>
 <body>
@@ -131,14 +162,16 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
 <div class="screen" id="scr-enroll"><div class="panel">
   <h1>GPR</h1><div class="sub">Solutions</div>
   <div class="motto">Active su doble factor</div>
-  <p style="font-size:13px;color:var(--slate);margin-bottom:8px">Abra <b>Proton Authenticator</b> → «+» → «Introducir clave manualmente» y copie esta clave secreta:</p>
-  <div class="secret-box" id="enrollSecret"></div>
+  <p style="font-size:13px;color:var(--slate);margin-bottom:6px">Abra <b>Proton Authenticator</b> → «+» → «Escanear código QR» y escanee este código:</p>
+  <div class="qr-box" id="qrBox"><img id="enrollQR" alt="Código QR para activar el doble factor" onerror="qrFail()"></div>
+  <p class="secret-alt">¿Sin cámara o desde el propio móvil? «+» → «Introducir clave manualmente» y copie esta clave secreta:</p>
+  <div class="secret-box secret-sm" id="enrollSecret"></div>
   <div class="error-msg" id="enrollErr"></div>
   <div class="field"><label>Código generado (6 dígitos)</label><input type="text" id="enrollCode" inputmode="numeric" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:.25em"></div>
   <button class="btn-green" style="width:100%" onclick="confirmEnroll()">Activar y verificar</button>
 </div></div>
 
-<!-- CONTRASEÑA MAESTRA (solo asesor) -->
+<!-- CONTRASEÑA MAESTRA (v4: asesor; y apertura única para migrar titulares cifrados en v3.2) -->
 <div class="screen" id="scr-master"><div class="panel">
   <h1>GPR</h1><div class="sub">Solutions</div>
   <div class="motto">Bóveda cifrada de extremo a extremo</div>
@@ -147,13 +180,23 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
   <div class="field"><label>Contraseña maestra</label><input type="password" id="mpass1"></div>
   <div class="field" id="mpass2row"><label>Repita la contraseña maestra</label><input type="password" id="mpass2"></div>
   <button class="btn-primary" style="width:100%" id="masterBtn" onclick="submitMaster()">Continuar</button>
+  <button class="btn-secondary" style="width:100%;margin-top:10px;display:none" id="masterEmptyBtn" onclick="startEmptyVault()">Empezar con bóveda vacía</button>
   <div class="small-note" style="text-align:center">La contraseña maestra cifra sus datos en su navegador: nadie puede recuperarla por usted. Guárdela en papel.</div>
+</div></div>
+
+<!-- v4 · INCIDENCIAS DEL FLUJO (lectura de bóveda, perfil, formato no reconocido) -->
+<div class="screen" id="scr-msg"><div class="panel">
+  <h1>GPR</h1><div class="sub">Solutions</div>
+  <div class="motto" id="msgTitle"></div>
+  <div class="error-msg" id="msgErr"></div>
+  <div id="msgBtns"></div>
 </div></div>
 
 <!-- APP -->
 <div id="app">
 <header>
-  <div class="brand"><span class="gpr">GPR</span><span class="sol">S O L U T I O N S</span><span class="ver">· Plataforma Patrimonial v3.1</span></div>
+  <div class="brand"><span class="gpr">GPR</span><span class="sol">S O L U T I O N S</span><span class="ver">· Plataforma Patrimonial v5</span></div>
+  <div class="ro-wrap" id="roWrap"><span class="ro-banner" id="roBanner"></span><button class="btn-secondary ro-back" onclick="exitView()">Volver a mi panel</button></div>
   <div class="userbox">
     <span class="initials-badge" id="hdrInitials">GP</span>
     <span id="hdrRole"></span>
@@ -175,7 +218,7 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
     <p class="pdesc">Metas financieras personales y cuaderno de bitácora mensual con la valoración del asesor.</p>
     <div class="widget"><h3>Objetivos financieros (máximo 7)</h3>
       <div id="goalsList"></div>
-      <div class="toolrow">
+      <div class="toolrow wr">
         <div class="field"><label>Objetivo</label><input id="goalText" placeholder="Ej.: Fondo de emergencia completo"></div>
         <div class="field" style="max-width:140px"><label>Importe (€)</label><input id="goalAmt" type="number" step="0.01" min="0"></div>
         <div class="field" style="max-width:150px"><label>Plazo</label><input id="goalDate" type="month"></div>
@@ -183,8 +226,8 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
       </div>
     </div>
     <div class="widget"><h3>Cuaderno de bitácora</h3>
-      <div class="field"><label>Nueva entrada (valoración de máx. 10 líneas de Lumo)</label><textarea id="bitText" rows="4" placeholder="Pegue aquí la valoración mensual de Lumo…"></textarea></div>
-      <div class="toolrow">
+      <div class="field wr"><label>Nueva entrada (valoración de máx. 10 líneas de Lumo)</label><textarea id="bitText" rows="4" placeholder="Pegue aquí la valoración mensual de Lumo…"></textarea></div>
+      <div class="toolrow wr">
         <div class="field" style="max-width:170px"><label>Fecha</label><input type="date" id="bitDate"></div>
         <button class="btn-primary" onclick="addBitacora()">Guardar entrada</button>
       </div>
@@ -196,20 +239,20 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
     <h2 class="ptitle">Posiciones en cartera</h2>
     <p class="pdesc">Gestione los activos vigentes: fondos indexados, metales y cuentas remuneradas.</p>
     <div class="widget">
-      <div class="toolrow">
+      <div class="toolrow wr">
         <div class="field"><label>Nombre</label><input id="posName" placeholder="Ej.: MSCI World (Fidelity)"></div>
         <div class="field" style="max-width:160px"><label>Grupo</label><select id="posGroup"></select></div>
         <div class="field" style="max-width:120px"><label>Invertido (€)</label><input id="posInv" type="number" step="0.01"></div>
         <div class="field" style="max-width:120px"><label>Valor actual (€)</label><input id="posVal" type="number" step="0.01"></div>
         <div class="field" style="max-width:100px"><label>Aport./mes (€)</label><input id="posMes" type="number" step="0.01"></div>
-        <div class="field" style="max-width:150px"><label>ISIN</label><input id="posIsin" maxlength="12" placeholder="IE00BYX5NX33" style="text-transform:uppercase"></div>
+        <div class="field isin-f" style="max-width:150px"><label>ISIN</label><input id="posIsin" maxlength="12" placeholder="IE00BYX5NX33" style="text-transform:uppercase" oninput="checkIsinField('posIsin')"><div class="isin-hint" id="posIsinHint">Formato ISIN no estándar</div></div>
         <div class="field" style="max-width:110px"><label>TER (% anual)</label><input id="posTer" type="number" step="0.01" min="0"></div>
         <button class="btn-primary" style="height:42px" onclick="addPosition()">+ Nueva posición</button>
       </div>
       <div style="overflow-x:auto"><table class="data" id="posTable"></table></div>
     </div>
     <div class="widget"><h3>Liquidez bancaria (fuera de cartera)</h3>
-      <div class="toolrow">
+      <div class="toolrow wr">
         <div class="field"><label>Entidad</label><input id="cashName" placeholder="Ej.: CaixaBank"></div>
         <div class="field" style="max-width:140px"><label>Saldo (€)</label><input id="cashVal" type="number" step="0.01"></div>
         <button class="btn-primary" style="height:42px" onclick="addCash()">+ Añadir</button>
@@ -217,7 +260,7 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
       <div style="overflow-x:auto"><table class="data" id="cashTable"></table></div>
     </div>
     <div class="widget"><h3>Deuda pendiente</h3>
-      <div class="toolrow">
+      <div class="toolrow wr">
         <div class="field"><label>Concepto</label><input id="debtName" placeholder="Ej.: Préstamo BBVA"></div>
         <div class="field" style="max-width:140px"><label>Capital pendiente (€)</label><input id="debtVal" type="number" step="0.01"></div>
         <div class="field" style="max-width:130px"><label>Cuota (€/mes)</label><input id="debtFee" type="number" step="0.01"></div>
@@ -260,7 +303,7 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
     <h2 class="ptitle">Movimientos</h2>
     <p class="pdesc">Diario de aportaciones, ventas y variaciones patrimoniales registradas.</p>
     <div class="widget">
-      <div class="toolrow">
+      <div class="toolrow wr">
         <div class="field" style="max-width:150px"><label>Fecha</label><input type="date" id="mvDate"></div>
         <div class="field" style="max-width:160px"><label>Tipo</label><select id="mvType"><option>Aportación</option><option>Venta</option><option>Compra</option><option>Amortización deuda</option><option>Regularización valor</option></select></div>
         <div class="field"><label>Detalle</label><input id="mvDesc" placeholder="Ej.: Aportación MSCI World"></div>
@@ -277,7 +320,7 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
     <div class="widget"><h3>Serie histórica gráfica</h3><canvas class="chart" id="cvSerie"></canvas><p class="small-note" id="serieNote"></p></div>
     <div class="widget"><h3>Serie histórica rentabilidad mensual</h3><canvas class="chart" id="cvReturns"></canvas><p class="small-note" id="retNote"></p></div>
     <div class="widget"><h3>Cierres registrados</h3>
-      <div class="toolrow">
+      <div class="toolrow wr">
         <div class="field" style="max-width:180px"><label>Fecha de cierre</label><input type="date" id="closeDate"></div>
         <button class="btn-green" style="height:42px" onclick="registerClosing()">Registrar cierre (autocompletar)</button>
       </div>
@@ -293,19 +336,20 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
         <div class="field" style="max-width:130px"><label>Iniciales (cabecera)</label><input id="setInitials" maxlength="4" placeholder="GP"></div>
         <div class="field" style="max-width:110px"><label>Edad</label><input id="setAge" type="number" min="1" max="110"></div>
         <div class="field" style="max-width:130px"><label>Rol</label><input disabled id="setRole"></div>
-        <button class="btn-primary" style="height:42px" onclick="saveMeta()">Guardar perfil</button>
+        <button class="btn-primary wr" style="height:42px" onclick="saveMeta()">Guardar perfil</button>
       </div>
       <p class="small-note">La edad permite a Lumo ajustar el horizonte temporal en cada valoración mensual.</p>
+      <p class="small-note" id="memberNote" style="display:none">Sus datos se guardan protegidos por acceso con doble factor y políticas de acceso del servidor. Su asesor autorizado puede consultar toda su aplicación en modo de solo lectura (Resumen, Objetivos, Cartera, Proyecciones y Sucesión, Movimientos, Historial y Ajustes).</p>
     </div>
-    <div class="widget"><h3>Copias de seguridad</h3>
+    <div class="widget wr"><h3>Copias de seguridad</h3>
       <button class="btn-secondary" onclick="exportVault()">Exportar datos (JSON)</button>
       <p class="small-note">Conserve una copia en Proton Drive con cada cierre mensual.</p>
     </div>
-    <div class="widget"><h3>Restauración</h3>
+    <div class="widget wr"><h3>Restauración</h3>
       <button class="btn-danger" onclick="restoreOctober()">Restaurar datos de octubre 2026</button>
       <p class="small-note">Sustituye la bóveda actual por los datos de partida (cierre 31/10/2026).</p>
     </div>
-    <div class="widget" id="advisorBox"><h3>Bóvedas asesoradas (solo lectura)</h3><div id="advisorList"></div></div>
+    <div class="widget wr" id="advisorBox"><h3>Bóvedas asesoradas (solo lectura)</h3><div id="advisorList"></div></div>
   </section>
 </main>
 </div>
@@ -335,13 +379,49 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
     <div class="field"><label>Valor actual (€)</label><input id="edVal" type="number" step="0.01"></div>
   </div>
   <div class="toolrow">
-    <div class="field"><label>ISIN</label><input id="edIsin" maxlength="12" style="text-transform:uppercase"></div>
+    <div class="field isin-f"><label>ISIN</label><input id="edIsin" maxlength="12" style="text-transform:uppercase" oninput="checkIsinField('edIsin')"><div class="isin-hint" id="edIsinHint">Formato ISIN no estándar</div></div>
     <div class="field"><label>TER (% anual)</label><input id="edTer" type="number" step="0.01" min="0"></div>
   </div>
   <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
     <button class="btn-secondary" onclick="closeEdit()">Cancelar</button>
     <button class="btn-primary" onclick="saveEdit()">Guardar cambios</button>
   </div>
+</div></div>
+
+<!-- ===== v5 · ELIMINACIÓN DE ASESORADO · paso 1: contraseña maestra del asesor ===== -->
+<div class="modal-bg" id="delPassModal"><div class="modal">
+  <h3 style="margin-bottom:10px">Eliminar asesorado · verificación de identidad</h3>
+  <p style="font-size:13px;color:var(--slate);margin-bottom:6px">Asesorado:</p>
+  <div class="dlg-sub" id="delPassName"></div>
+  <div class="error-msg" id="delPassErr"></div>
+  <div class="field"><label>Su contraseña maestra de asesor</label><input type="password" id="delPass" autocomplete="off"></div>
+  <div class="dlg-btns">
+    <button class="btn-secondary" onclick="cancelDelete()">Cancelar</button>
+    <button class="btn-primary" id="delPassBtn" onclick="delCheckPass()">Continuar</button>
+  </div>
+</div></div>
+
+<!-- ===== v5 · Diálogo genérico (confirmación de borrado, errores con «Reintentar») ===== -->
+<div class="modal-bg" id="dlgModal"><div class="modal">
+  <h3 style="margin-bottom:12px" id="dlgTitle"></h3>
+  <p style="font-size:14px;margin-bottom:12px;line-height:1.55" id="dlgMsg"></p>
+  <div class="dlg-sub" id="dlgSub"></div>
+  <div class="dlg-btns" id="dlgBtns"></div>
+</div></div>
+
+<!-- ===== v5 · ELIMINACIÓN DE ASESORADO · instrucciones post-borrado (persistente) ===== -->
+<div class="modal-bg" id="delDoneModal"><div class="modal">
+  <p style="margin-bottom:12px"><b>Eliminación completada en la aplicación.</b> Todos los datos patrimoniales de este asesorado (bóveda, posiciones, movimientos, cierres y perfil) han sido borrados definitivamente.</p>
+  <p style="margin-bottom:8px"><b>Paso final manual (eliminación de la cuenta de acceso):</b> la cuenta de inicio de sesión del titular debe eliminarse desde el panel de Supabase, por diseño de seguridad. Procedimiento:</p>
+  <ol style="padding-left:22px;margin-bottom:12px">
+    <li>Entre en el panel de Supabase de su proyecto.</li>
+    <li>Menú lateral izquierdo: <b>Authentication</b> → <b>Users</b>.</li>
+    <li>Localice en la lista el correo electrónico del asesorado eliminado.</li>
+    <li>Pulse el menú de tres puntos (⋮) de su fila → <b>Delete user</b> → confirme.</li>
+  </ol>
+  <p style="margin-bottom:12px">Tras este paso, la cuenta deja de existir y no podrá iniciar sesión. Este paso solo lo puede realizar usted, propietario del proyecto.</p>
+  <p class="msg-warn" style="margin-top:0"><b>Importante — realice el paso final lo antes posible:</b> mientras no elimine la cuenta, el asesorado aún puede iniciar sesión con su doble factor; si lo hace, la aplicación le creará una bóveda vacía nueva y volverá a aparecer en «Bóvedas asesoradas» (sus datos anteriores ya no existen). Borrar la cuenta en Authentication evita esta situación.</p>
+  <button class="btn-primary" style="margin-top:16px" onclick="document.getElementById('delDoneModal').classList.remove('on')">Entendido</button>
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -351,7 +431,12 @@ table.data tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-
 /* ============ CONFIG ============ */
 const SB_URL='https://gipckwwrvkpjkufogabw.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpcGNrd3dydmtwamt1Zm9nYWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MzEyMzgsImV4cCI6MjEwOTEwNzIzOH0.sq-mgxD3Q4GwQiKEa-0s8wEhWqO7AP2IJB-zrAuYvsg';
-const sb=window.supabase.createClient(SB_URL,SB_KEY);
+/* v4: si la CDN no carga, la app no puede quedar muda (novedad 4.6) */
+const SB_STORE_KEY='sb-'+new URL(SB_URL).hostname.split('.')[0]+'-auth-token';
+const _hadSession=(()=>{try{return !!localStorage.getItem(SB_STORE_KEY);}catch(_){return false;}})();
+let sb=null;
+try{sb=window.supabase.createClient(SB_URL,SB_KEY);}catch(_){sb=null;}
+
 const GROUPS=[
  {id:'rv',name:'Renta Variable',color:'#16294B'},
  {id:'rf',name:'Renta Fija',color:'#3A5A78'},
@@ -417,114 +502,358 @@ function seedData(){return{
 function seedEmpty(){const d=seedData();d.positions=[];d.cash=[];d.debts=[];d.movimientos=[];d.goals=[];d.bitacora=[];d.closings=[];d.meta={initials:'',age:null};return d;}
 
 /* ============ ESTADO ============ */
-let USER=null,PROFILE=null,DATA=null,masterKey=null,HAS_MASTER=false,mfaFactorId=null,_enroll=null,_pendingRow=null,_newSalt=null;
+let USER=null,PROFILE=null,DATA=null,masterKey=null,HAS_MASTER=false,mfaFactorId=null,_enroll=null,_pendingRow=null,_newSalt=null,_migrateData=null;
+/* v4: _resume = sesión caducada en uso (DATA se conserva en memoria hasta el nuevo acceso) */
+let _resume=null,_busy=false;
+/* v5 · Vista de asesorado (5.1): _view={id,name,data} con la COPIA PROFUNDA de la
+   bóveda ajena (jamás se persiste). _advList: filas de «Bóvedas asesoradas».
+   _del: asesorado en curso de eliminación (5.2). */
+let _view=null,_advList=[],_del=null,_viewBusy=false,_delBusy=false;
 const TABS=[['resumen','Resumen'],['objetivos','Objetivos y Recomendaciones'],['cartera','Cartera'],['proyecciones','Proyecciones y Sucesión'],['movimientos','Movimientos'],['historial','Historial'],['ajustes','Ajustes']];
-function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
-function showErr(i,m){const e=$(i);e.textContent=m;e.style.display='block';}
+let _toastT=null;
+/* v4: mientras la sesión está caducada solo se muestran los avisos forzados
+   (el mensaje de sesión caducada ya ocupa la pantalla de acceso). */
+function toast(m,ms,force){if(_resume&&!force)return;const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(_toastT);_toastT=setTimeout(()=>t.style.display='none',ms||3500);}
+/* v4: los recuadros de mensaje de las pantallas de acceso son de error o informativos */
+function showErr(i,m){const e=$(i);e.classList.remove('info');e.textContent=m;e.style.display='block';}
+function showInfo(i,m){const e=$(i);e.classList.add('info');e.textContent=m;e.style.display='block';}
 function hideErr(i){$(i).style.display='none';}
 function screen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));if(id)$(id).classList.add('active');}
+
+/* ===== v4 · TRADUCCIÓN DE ERRORES AL CASTELLANO (novedad 4.8) =====
+   Supabase responde en inglés: nunca se muestra el texto crudo. */
+const MSG_UNCONFIRMED='Su correo aún no está confirmado: abra el enlace del mensaje que recibió (revise también Spam) e inténtelo de nuevo.';
+const MSG_EXPIRED='Su sesión ha caducado; inicie sesión de nuevo.';
+const MSG_EXPIRED_KEEP='Su sesión ha caducado; inicie sesión de nuevo. Sus últimos cambios no guardados se han conservado en este navegador';
+const ERR_ES={
+ credentials:'Correo o contraseña incorrectos.',
+ unconfirmed:MSG_UNCONFIRMED,
+ mfa:'Código incorrecto o caducado. Compruebe que la hora del móvil es automática y reintente.',
+ ratelimit:'Demasiados intentos seguidos. Espere unos minutos y vuelva a intentarlo.',
+ session:MSG_EXPIRED,
+ network:'No hay conexión con el servidor. Compruebe su conexión a Internet y reintente.',
+ exists:'Ya existe una cuenta con ese correo: inicie sesión.',
+ weak:'El servidor considera la contraseña demasiado débil: elija una más larga o variada.',
+ denied:'El servidor ha denegado el acceso a estos datos (permisos de la cuenta).',
+ generic:'Se ha producido un error inesperado. Inténtelo de nuevo en unos minutos.'};
+function errKind(e){
+ if(!e)return 'generic';
+ const m=String(e.message||e.msg||e.error_description||(typeof e==='string'?e:'')).toLowerCase();
+ const c=String(e.code||e.error_code||'').toLowerCase(),st=+e.status||0;
+ if(c==='email_not_confirmed'||m.includes('email not confirmed'))return 'unconfirmed';
+ if(c==='invalid_credentials'||m.includes('invalid login credentials'))return 'credentials';
+ if(st===429||c.startsWith('over_')||m.includes('rate limit')||m.includes('too many'))return 'ratelimit';
+ if(c==='mfa_verification_failed'||c==='mfa_challenge_expired'||m.includes('invalid totp')||(m.includes('code')&&(m.includes('invalid')||m.includes('expired'))))return 'mfa';
+ if(['session_expired','session_not_found','refresh_token_not_found','refresh_token_already_used','bad_jwt','pgrst301','pgrst303'].includes(c)||m.includes('jwt')||m.includes('session')||m.includes('refresh token'))return 'session';
+ if(e.name==='AuthRetryableFetchError'||m.includes('failed to fetch')||m.includes('networkerror')||m.includes('network')||m.includes('load failed')||m.includes('fetch'))return 'network';
+ if(c==='user_already_exists'||m.includes('already registered')||m.includes('already exists'))return 'exists';
+ if(c==='weak_password'||m.includes('password should')||m.includes('weak password'))return 'weak';
+ if(c==='42501'||m.includes('row-level security')||m.includes('permission denied'))return 'denied';
+ return 'generic';}
+const tr=e=>ERR_ES[errKind(e)];
+
+/* ===== v4 · PROHIBICIÓN DEL FALLO SILENCIOSO (novedad 4.6) =====
+   Todo error del flujo se escribe en la pantalla ACTIVA (nunca en una oculta);
+   con la aplicación abierta, en un toast. */
+const SCREEN_ERR={'scr-auth':'authErr','scr-mfa':'mfaErr','scr-enroll':'enrollErr','scr-master':'masterErr','scr-msg':'msgErr'};
+function flowErr(m){
+ if($('app').classList.contains('active')){toast(m,6000,true);return;}
+ let s=document.querySelector('.screen.active');
+ if(!s){screen('scr-auth');showLogin();s=$('scr-auth');}
+ showErr(SCREEN_ERR[s.id]||'authErr',m);}
+/* Pantalla de incidencia con acciones (Reintentar / Volver al inicio de sesión…) */
+function showMsgScreen(title,msg,btns){
+ $('app').classList.remove('active');
+ $('msgTitle').textContent=title;showErr('msgErr',msg);
+ const box=$('msgBtns');box.innerHTML='';
+ btns.forEach(([label,cls,fn])=>{const b=document.createElement('button');b.className=cls;b.style.width='100%';b.textContent=label;b.onclick=()=>fn();box.appendChild(b);});
+ screen('scr-msg');}
+function discardState(){
+ dropView();
+ DATA=null;PROFILE=null;masterKey=null;HAS_MASTER=false;_pendingRow=null;_newSalt=null;_migrateData=null;_resume=null;
+ $('app').classList.remove('active');}
+async function localSignOut(){
+ try{const {error}=await sb.auth.signOut();if(error)await sb.auth.signOut({scope:'local'});}
+ catch(_){try{await sb.auth.signOut({scope:'local'});}catch(__){}}}
+async function toLoginExpired(){
+ try{await sb.auth.signOut({scope:'local'});}catch(_){}
+ discardState();screen('scr-auth');showLogin();showErr('authErr',MSG_EXPIRED);}
+async function backToLogin(){await localSignOut();discardState();screen('scr-auth');showLogin();}
+window.addEventListener('unhandledrejection',ev=>{try{ev.preventDefault();}catch(_){}
+ toast('Se ha producido un error inesperado. Si el problema persiste, recargue la página.',6000,true);});
+window.addEventListener('error',ev=>{if(!ev.error)return;
+ toast('Se ha producido un error inesperado. Si el problema persiste, recargue la página.',6000,true);});
+window.addEventListener('beforeunload',ev=>{if(_resume&&DATA){ev.preventDefault();ev.returnValue='';}});
 
 /* ============ AUTENTICACIÓN ============ */
 function showLogin(){$('loginForm').style.display='block';$('regForm').style.display='none';hideErr('authErr');}
 function showRegister(){$('loginForm').style.display='none';$('regForm').style.display='block';hideErr('authErr');}
+const NO_SB='No se pudo cargar el componente de conexión con el servidor. Compruebe su conexión a Internet y recargue la página.';
 async function doLogin(){
  hideErr('authErr');
- try{const {error}=await sb.auth.signInWithPassword({email:$('liEmail').value.trim(),password:$('liPass').value});
- if(error)throw error;await afterAuth();}
- catch(e){showErr('authErr','No se pudo iniciar sesión: '+(e.message||'revise correo y contraseña'));}}
+ if(!sb){showErr('authErr',NO_SB);return;}
+ const em=$('liEmail').value.trim(),pw=$('liPass').value;
+ if(!em||!pw){showErr('authErr','Indique correo y contraseña.');return;}
+ if(_busy)return;_busy=true;
+ try{const {error}=await sb.auth.signInWithPassword({email:em,password:pw});
+  if(error){showErr('authErr',errKind(error)==='unconfirmed'?MSG_UNCONFIRMED:'No se pudo iniciar sesión: '+tr(error));return;}
+  await afterAuth();}
+ catch(e){flowErr('No se pudo iniciar sesión: '+tr(e));}
+ finally{_busy=false;}}
 async function doRegister(){
  hideErr('authErr');
+ if(!sb){showErr('authErr',NO_SB);return;}
  const em=$('rgEmail').value.trim(),p1=$('rgPass').value,p2=$('rgPass2').value;
  if(!em||!p1){showErr('authErr','Indique correo y contraseña.');return;}
  if(p1.length<8){showErr('authErr','La contraseña debe tener al menos 8 caracteres.');return;}
  if(p1!==p2){showErr('authErr','Las contraseñas no coinciden.');return;}
- try{const {error}=await sb.auth.signUp({email:em,password:p1});if(error)throw error;
- const e=$('authErr');e.style.background='var(--pale)';e.style.borderColor='var(--sky)';e.style.color='var(--navy)';
- showErr('authErr','Cuenta creada. Revise su correo (incluida carpeta Spam) y pulse el enlace de confirmación antes de iniciar sesión.');}
- catch(e){showErr('authErr','Error: '+(e.message||'no se pudo registrar'));}}
+ try{const {data,error}=await sb.auth.signUp({email:em,password:p1});
+  if(error){showErr('authErr','No se pudo crear la cuenta: '+tr(error));return;}
+  const u=data&&data.user;
+  /* Supabase devuelve un usuario sin identidades si el correo ya estaba registrado */
+  if(u&&Array.isArray(u.identities)&&u.identities.length===0){showErr('authErr',ERR_ES.exists);return;}
+  showLogin();$('liEmail').value=em;$('liPass').value='';
+  /* v4 · Paso siguiente según el caso (novedad 4.3) */
+  if(data&&data.session)showInfo('authErr','Cuenta creada y activa. Paso siguiente: inicie sesión con su correo y contraseña; después activará el doble factor escaneando un código QR.');
+  else showInfo('authErr','Cuenta creada. Paso siguiente: abra el enlace de confirmación que le hemos enviado por correo (revise también Spam) y, después, inicie sesión aquí.');}
+ catch(e){showErr('authErr','No se pudo crear la cuenta: '+tr(e));}}
+/* v4 · Solo cuentan los factores TOTP verificados (novedad 4.5b): un factor de un
+   alta abandonada (unverified) nunca se ofrece para verificar códigos. */
+async function verifiedTotp(){
+ const {data,error}=await sb.auth.mfa.listFactors();if(error)throw error;
+ return ((data&&data.totp)||[]).filter(f=>f.status==='verified');}
 async function afterAuth(){
- USER=(await sb.auth.getUser()).data.user;
- if(!USER){screen('scr-auth');return;}
- const {data:aal}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
- if(aal.nextLevel==='aal2'&&aal.currentLevel!=='aal2'){
-  const {data:factors}=await sb.auth.mfa.listFactors();
-  const f=factors&&factors.totp&&factors.totp[0];
-  if(f){mfaFactorId=f.id;screen('scr-mfa');$('mfaCode').focus();return;}}
- await postMFA();}
+ try{
+  const {data:ud,error:ue}=await sb.auth.getUser();
+  if(ue||!ud||!ud.user){
+   const k=ue?errKind(ue):'session';
+   if(k==='session'){await toLoginExpired();return;}
+   screen('scr-auth');showLogin();showErr('authErr',tr(ue));return;}
+  USER=ud.user;
+  const {data:aal,error:ae}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(ae)throw ae;
+  const vf=await verifiedTotp();
+  if(vf.length&&(!aal||aal.currentLevel!=='aal2')){
+   mfaFactorId=vf[0].id;$('mfaCode').value='';hideErr('mfaErr');screen('scr-mfa');$('mfaCode').focus();return;}
+  await postMFA();}
+ catch(e){if(errKind(e)==='session'){await toLoginExpired();return;}flowErr('No se pudo completar el acceso: '+tr(e));}}
 async function verifyMFA(){
  hideErr('mfaErr');
+ const code=$('mfaCode').value.trim();
+ if(!/^\d{6}$/.test(code)){showErr('mfaErr','Introduzca el código de 6 dígitos.');return;}
  try{const {data:ch,error:e1}=await sb.auth.mfa.challenge({factorId:mfaFactorId});if(e1)throw e1;
- const {error:e2}=await sb.auth.mfa.verify({factorId:mfaFactorId,challengeId:ch.id,code:$('mfaCode').value.trim()});if(e2)throw e2;
+  const {error:e2}=await sb.auth.mfa.verify({factorId:mfaFactorId,challengeId:ch.id,code});if(e2)throw e2;}
+ catch(e){const k=errKind(e);
+  if(k==='session'){await toLoginExpired();return;}
+  showErr('mfaErr',(k==='generic'||k==='mfa')?ERR_ES.mfa:tr(e));return;}
  await postMFA();}
- catch(e){showErr('mfaErr','Código incorrecto. Compruebe que la hora del móvil es automática y reintente.');}}
 async function postMFA(){
- const {data:factors}=await sb.auth.mfa.listFactors();
- const hasTOTP=factors&&factors.totp&&factors.totp.length>0;
- if(!hasTOTP){await beginEnroll();return;}
- const {data:prof}=await sb.from('profiles').select('*').eq('id',USER.id).maybeSingle();
- if(prof&&prof.role){PROFILE=prof;}
- else{await sb.from('profiles').insert({id:USER.id,display_name:USER.email,role:'member'});PROFILE={role:'member'};}
+ try{
+  const vf=await verifiedTotp();
+  if(!vf.length){await beginEnroll();return;}
+  const {data:prof,error:pe}=await sb.from('profiles').select('*').eq('id',USER.id).maybeSingle();
+  if(pe)throw pe;
+  /* v4: ante un error de lectura NUNCA se presupone «member» (un asesor mal
+     identificado vería su bóveda cifrada tratada como la de un titular). */
+  if(prof&&prof.role)PROFILE=prof;
+  else{const {error:ie}=await sb.from('profiles').insert({id:USER.id,display_name:USER.email,role:'member'});if(ie)throw ie;
+   PROFILE={id:USER.id,display_name:USER.email,role:'member'};}}
+ catch(e){
+  if(errKind(e)==='session'){await toLoginExpired();return;}
+  showMsgScreen('No se pudo preparar su acceso',tr(e),[['Reintentar','btn-primary',postMFA],['Volver al inicio de sesión','btn-secondary',backToLogin]]);return;}
+ /* v4 · Reanudación tras sesión caducada en uso: mismo usuario → se reintenta
+    guardar lo que quedó en memoria; otro usuario → se descarta sin escribirlo. */
+ if(_resume){
+  if(_resume.uid===USER.id&&DATA){_resume=null;enterApp();
+   if(await persistVault())toast('Sesión reanudada: sus cambios pendientes se han guardado.',6000);return;}
+  const keepProfile=PROFILE;discardState();PROFILE=keepProfile;}
  await loadVault();}
+/* v4 · Alta TOTP: factorType obligatorio (novedad 4.5a) y QR del servidor (4.5c) */
 async function beginEnroll(){
- try{const {data,error}=await sb.auth.mfa.enroll({friendlyName:'GPR Authenticator'});if(error)throw error;
- _enroll=data;$('enrollSecret').textContent=data.totp.secret;hideErr('enrollErr');screen('scr-enroll');}
- catch(e){const {data:factors}=await sb.auth.mfa.listFactors();
- const f=factors&&factors.totp&&factors.totp[0];
- if(f){mfaFactorId=f.id;screen('scr-mfa');}else showErr('enrollErr','No se pudo iniciar el alta 2FA: '+e.message);}}
+ try{
+  /* Altas abandonadas (unverified): no sirven para entrar y bloquearían el nombre */
+  try{const {data:fl}=await sb.auth.mfa.listFactors();
+   const stale=((fl&&fl.all)||[]).filter(f=>f.status!=='verified'&&(f.factor_type||'totp')==='totp');
+   for(const f of stale){try{await sb.auth.mfa.unenroll({factorId:f.id});}catch(_){}}}catch(_){}
+  const {data,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'GPR Authenticator '+new Date().toISOString().slice(0,16).replace('T',' ')});
+  if(error)throw error;
+  if(!data||!data.totp||!data.totp.secret)throw new Error('enroll-empty');
+  _enroll=data;
+  $('enrollSecret').textContent=data.totp.secret;
+  $('enrollCode').value='';hideErr('enrollErr');
+  screen('scr-enroll');renderQR(data.totp);$('enrollCode').focus();}
+ catch(e){
+  let vf=[];try{vf=await verifiedTotp();}catch(_){}
+  if(vf.length){mfaFactorId=vf[0].id;hideErr('mfaErr');screen('scr-mfa');return;}
+  flowErr('No se pudo iniciar el alta del doble factor: '+tr(e));}}
+/* QR: SVG generado por el propio Supabase (data.totp.qr_code), sin librerías.
+   Se acepta en bruto o como data URL y se normaliza a una data URL codificada. */
+function qrSrc(q){
+ if(!q)return null;q=String(q).trim();
+ if(/^data:image\/svg\+xml[^,]*;base64,/i.test(q))return q;
+ let svg=q;
+ if(/^data:/i.test(q)){svg=q.slice(q.indexOf(',')+1);if(/%3C/i.test(svg.slice(0,16))){try{svg=decodeURIComponent(svg);}catch(_){}}}
+ if(!/<svg[\s>]/i.test(svg))return null;
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);}
+function qrSecretMatches(t){
+ try{if(!t.uri)return true;const s=new URL(t.uri).searchParams.get('secret');
+  return !s||s.replace(/\s/g,'').toUpperCase()===String(t.secret).replace(/\s/g,'').toUpperCase();}
+ catch(_){return true;}}
+function renderQR(t){
+ const img=$('enrollQR'),src=qrSrc(t.qr_code);
+ if(src&&qrSecretMatches(t)){img.src=src;$('qrBox').style.display='flex';}
+ else qrFail();}
+function qrFail(){
+ $('qrBox').style.display='none';$('enrollQR').removeAttribute('src');
+ if($('scr-enroll').classList.contains('active'))showErr('enrollErr','No se pudo mostrar el código QR: use la clave secreta manual que figura más abajo.');}
 async function confirmEnroll(){
  hideErr('enrollErr');
  const code=$('enrollCode').value.trim();
- if(code.length!==6){showErr('enrollErr','Introduzca el código de 6 dígitos.');return;}
+ if(!/^\d{6}$/.test(code)){showErr('enrollErr','Introduzca el código de 6 dígitos.');return;}
+ if(!_enroll){showErr('enrollErr','El alta del doble factor no está iniciada: vuelva a iniciar sesión.');return;}
  try{const {data:ch,error:e1}=await sb.auth.mfa.challenge({factorId:_enroll.id});if(e1)throw e1;
- const {error:e2}=await sb.auth.mfa.verify({factorId:_enroll.id,challengeId:ch.id,code});if(e2)throw e2;
+  const {error:e2}=await sb.auth.mfa.verify({factorId:_enroll.id,challengeId:ch.id,code});if(e2)throw e2;}
+ catch(e){const k=errKind(e);
+  if(k==='session'){await toLoginExpired();return;}
+  showErr('enrollErr',(k==='generic'||k==='mfa')?'Código incorrecto. Compruebe que escaneó el código QR (o copió la clave) de esta pantalla y que la hora del móvil es automática.':tr(e));return;}
  await postMFA();}
- catch(e){showErr('enrollErr','Código incorrecto. Verifique que la clave copiada coincide exactamente y que la hora del móvil es automática.');}}
 
-/* ============ BÓVEDA ============ */
+/* ============ BÓVEDA · PERSISTENCIA ROL-DEPENDIENTE (v4) ============
+   · Asesor (advisor): cifrado de extremo a extremo con contraseña maestra,
+     idéntico a v3.2: PBKDF2-SHA-256 (100.000 iteraciones) + AES-GCM 256,
+     sobre {enc:true, iv, ct} y sal. Nadie, ni Supabase, lee su patrimonio.
+   · Titular (member): {enc:false, data} en claro, protegido por acceso:
+     RLS (solo el titular escribe su fila; solo asesores autenticados la leen),
+     MFA y HTTPS. Compromiso deliberado del propietario para la visibilidad
+     asesorada (pliego v4, secciones 3 y 11); minimización de datos: la bóveda
+     no contiene datos identificativos de terceros. */
+const isAdvisor=()=>!!PROFILE&&PROFILE.role==='advisor';
+function parseEnv(p){let env=p;if(typeof env==='string'){try{env=JSON.parse(env);}catch(_){return null;}}
+ return (env&&typeof env==='object'&&!Array.isArray(env))?env:null;}
+function masterMode(desc,btn,double){
+ $('masterDesc').textContent=desc;$('masterBtn').textContent=btn;
+ $('mpass2row').style.display=double?'block':'none';$('masterEmptyBtn').style.display='none';
+ $('mpass1').value='';$('mpass2').value='';hideErr('masterErr');
+ screen('scr-master');$('mpass1').focus();}
 async function loadVault(){
- const {data:row,error}=await sb.from('vault_records').select('*').eq('owner_id',USER.id).maybeSingle();
- if(error){toast('Error al leer la bóveda: '+error.message);return;}
- if(row&&row.payload){
-  let env=row.payload;
-  if(typeof env==='string'){try{env=JSON.parse(env);}catch(_){env=null;}}
-  if(env&&env.enc){
-   HAS_MASTER=true;_pendingRow=row;
-   $('masterDesc').textContent='Introduzca la contraseña maestra de su bóveda cifrada.';
-   $('mpass2row').style.display='none';$('masterBtn').textContent='Abrir bóveda';
-   screen('scr-master');return;}
-  if(env&&env.data){HAS_MASTER=false;DATA=env.data;enterApp();return;}}
- if(PROFILE.role==='advisor'){
-  HAS_MASTER=true;_pendingRow=null;
-  $('masterDesc').textContent='Defina su contraseña maestra: cifra la bóveda en su navegador (AES-GCM 256) antes de viajar al servidor.';
-  $('mpass2row').style.display='block';$('masterBtn').textContent='Crear bóveda cifrada';
-  screen('scr-master');}
- else{HAS_MASTER=false;DATA=seedEmpty();await persistVault();enterApp();}}
+ let row;
+ try{const r=await sb.from('vault_records').select('*').eq('owner_id',USER.id).maybeSingle();if(r.error)throw r.error;row=r.data;}
+ catch(e){
+  if(errKind(e)==='session'){await toLoginExpired();return;}
+  showMsgScreen('No se pudo leer su bóveda',tr(e)+' Sus datos no se han modificado.',[['Reintentar','btn-primary',loadVault],['Volver al inicio de sesión','btn-secondary',backToLogin]]);return;}
+ _pendingRow=null;_migrateData=null;_newSalt=null;masterKey=null;
+ if(!row){await createVault();return;}
+ const env=parseEnv(row.payload);
+ if(env&&env.enc&&env.iv&&env.ct){
+  _pendingRow=row;
+  if(isAdvisor()){HAS_MASTER=true;masterMode('Introduzca la contraseña maestra de su bóveda cifrada.','Abrir bóveda',false);}
+  /* v4 · MIGRACIÓN de titulares cifrados en pruebas v3.2 → claro con RLS */
+  else{HAS_MASTER=false;masterMode('Su bóveda se guardaba cifrada. Introduzca su contraseña maestra para abrirla; en esta versión pasará a guardarse con protección de acceso, visible solo para usted y su asesor.','Abrir bóveda',false);}
+  return;}
+ if(env&&!env.enc&&env.data&&typeof env.data==='object'&&!Array.isArray(env.data)){
+  if(isAdvisor()){
+   /* Asesor con bóveda en claro (sin cambios respecto a v3.2): se cifra sin pérdida */
+   HAS_MASTER=true;_migrateData=env.data;
+   masterMode('Aviso de seguridad: su bóveda se guardaba sin cifrar (versión anterior). Para seguir, defina ahora una contraseña maestra: la bóveda se reescribirá cifrada en su navegador (AES-GCM 256) conservando íntegramente todos sus datos.','Cifrar mi bóveda',true);
+   return;}
+  /* Titular con bóveda en claro (v2.3/v3.1): carga directa */
+  HAS_MASTER=false;DATA=env.data;enterApp();return;}
+ /* Formato irreconocible: jamás se sobrescribe sin confirmación explícita */
+ showMsgScreen('Bóveda en formato no reconocido','La bóveda guardada en el servidor tiene un formato que esta versión no reconoce y no puede abrirse. Puede volver al inicio de sesión sin modificar nada o sustituirla por una bóveda nueva, lo que borraría de forma irreversible su contenido actual.',
+  [['Sobrescribir con una bóveda nueva','btn-danger',confirmOverwrite],['Volver al inicio de sesión','btn-secondary',backToLogin]]);}
+async function confirmOverwrite(){
+ if(!confirm('Se BORRARÁ DE FORMA IRREVERSIBLE el contenido actual de su bóveda en el servidor y se creará una bóveda nueva. ¿Continuar?'))return;
+ await createVault();}
+async function createVault(){
+ _pendingRow=null;_migrateData=null;_newSalt=null;masterKey=null;
+ if(isAdvisor()){HAS_MASTER=true;
+  masterMode('Defina su contraseña maestra: cifra la bóveda en su navegador (AES-GCM 256) antes de viajar al servidor.','Crear bóveda cifrada',true);return;}
+ /* Titular nuevo: bóveda vacía en claro y entrada directa, sin contraseña maestra */
+ HAS_MASTER=false;DATA=seedEmpty();
+ if(!(await persistVault())){if(_resume)return;
+  showMsgScreen('No se pudo crear su bóveda','No se pudo guardar la bóveda nueva en el servidor. Reintente en unos instantes.',[['Reintentar','btn-primary',createVault],['Volver al inicio de sesión','btn-secondary',backToLogin]]);return;}
+ enterApp();}
 async function submitMaster(){
  hideErr('masterErr');
  const p1=$('mpass1').value;
  if(_pendingRow){
-  try{const salt=b64u.d(_pendingRow.salt||'');
-   if(!salt||salt.length===0)throw new Error('sal');
-   const key=await deriveKey(p1,salt);
-   let env=_pendingRow.payload;if(typeof env==='string')env=JSON.parse(env);
-   DATA=await decJSON(env,key);masterKey=key;enterApp();return;}
-  catch(e){showErr('masterErr','La contraseña no descifra esta bóveda. Si no la recuerda, no hay recuperación posible: use «Restaurar datos de octubre 2026» en Ajustes tras crear una nueva.');return;}}
+  if(!p1){showErr('masterErr','Introduzca la contraseña maestra.');return;}
+  let dec,key;
+  try{const salt=b64u.d(_pendingRow.salt||'');if(!salt||!salt.length)throw new Error('sal');
+   key=await deriveKey(p1,salt);dec=await decJSON(parseEnv(_pendingRow.payload),key);}
+  catch(e){
+   if(isAdvisor())showErr('masterErr','La contraseña no descifra esta bóveda. Si no la recuerda, no hay recuperación posible: use «Restaurar datos de octubre 2026» en Ajustes tras crear una nueva.');
+   else{showErr('masterErr','La contraseña no descifra esta bóveda. Reintente o, si no la recuerda, pulse «Empezar con bóveda vacía».');$('masterEmptyBtn').style.display='block';}
+   return;}
+  if(isAdvisor()){DATA=dec;masterKey=key;enterApp();return;}
+  /* Titular: se reescribe en claro y solo se entra si el servidor lo confirma */
+  DATA=dec;masterKey=null;HAS_MASTER=false;
+  if(!(await persistVault())){if(!_resume)showErr('masterErr','No se pudo reescribir la bóveda en el servidor. Sus datos siguen intactos: compruebe la conexión y pulse de nuevo «Abrir bóveda».');return;}
+  _pendingRow=null;enterApp();
+  toast('Bóveda migrada: todos sus datos se han conservado y ahora se guardan con protección de acceso, visibles solo para usted y su asesor.',9000);
+  return;}
+ if(!isAdvisor()){showErr('masterErr','Los titulares no utilizan contraseña maestra: vuelva a iniciar sesión.');return;}
  if(p1.length<8){showErr('masterErr','La contraseña maestra debe tener al menos 8 caracteres.');return;}
  if(p1!==$('mpass2').value){showErr('masterErr','Las contraseñas no coinciden.');return;}
  const salt=crypto.getRandomValues(new Uint8Array(16));
  _newSalt=b64u.e(salt);
  masterKey=await deriveKey(p1,salt);
- DATA=seedData();await persistVault();enterApp();}
+ if(_migrateData){
+  /* Migración del asesor (v3.2): mismos datos, ahora cifrados. Solo se entra
+     si la reescritura cifrada se confirma; si falla, la fila sigue intacta. */
+  DATA=_migrateData;
+  if(!(await persistVault())){masterKey=null;_newSalt=null;if(_resume)return;
+   showErr('masterErr','No se pudo guardar la bóveda cifrada. Sus datos siguen intactos: compruebe la conexión y reintente.');return;}
+  _migrateData=null;enterApp();
+  toast('Bóveda migrada: todos sus datos se han conservado y desde ahora se guardan cifrados con su contraseña maestra. Guárdela en papel: no hay recuperación posible.',9000);
+  return;}
+ /* Asesor nuevo: semilla de octubre cifrada (como en v3.1 y v3.2) */
+ DATA=seedData();
+ const ok=await persistVault();if(!ok&&_resume)return;
+ enterApp();}
+/* «Empezar con bóveda vacía»: solo titulares en migración, con confirmación destructiva */
+async function startEmptyVault(){
+ if(isAdvisor()||!_pendingRow)return;
+ if(!confirm('ATENCIÓN: se BORRARÁN DE FORMA IRREVERSIBLE los datos de su bóveda cifrada anterior; sin la contraseña maestra nadie podrá recuperarlos. Se creará una bóveda vacía. ¿Continuar?'))return;
+ hideErr('masterErr');
+ DATA=seedEmpty();masterKey=null;HAS_MASTER=false;
+ if(!(await persistVault())){if(!_resume)showErr('masterErr','No se pudo crear la bóveda vacía en el servidor. Compruebe la conexión y reintente.');return;}
+ _pendingRow=null;enterApp();toast('Bóveda vacía creada.');}
 async function persistVault(){
- if(!USER)return false;
- let payload,salt='';
- if(HAS_MASTER&&masterKey){
-  payload={enc:true,...(await encJSON(DATA,masterKey))};
-  salt=_newSalt||(_pendingRow&&_pendingRow.salt)||'';}
- else payload={enc:false,data:DATA};
- const {error}=await sb.from('vault_records').upsert({owner_id:USER.id,payload,salt},{onConflict:'owner_id'});
- if(error){toast('Error al guardar: '+error.message);return false;}
- return true;}
+ /* v5 · Modo lectura de asesorado: NINGÚN guardado posible (ni del titular ni del asesor) */
+ if(_view){toast('Vista de asesorado en modo lectura: no se guarda ningún cambio.');return false;}
+ if(!USER||!PROFILE||!DATA)return false;
+ if(_resume)return false; /* sesión caducada: se reintenta tras el nuevo acceso */
+ try{
+  let payload,salt='';
+  if(isAdvisor()){
+   if(!masterKey){toast('Bóveda bloqueada: sin contraseña maestra activa no se guarda ningún dato.');return false;}
+   salt=_newSalt||(_pendingRow&&_pendingRow.salt)||'';
+   if(!salt){toast('Error al guardar: falta la sal de cifrado de la bóveda.');return false;}
+   payload={enc:true,...(await encJSON(DATA,masterKey))};}
+  else payload={enc:false,data:DATA};
+  const {error}=await sb.from('vault_records').upsert({owner_id:USER.id,payload,salt},{onConflict:'owner_id'});
+  if(error)throw error;
+  return true;}
+ catch(e){
+  if(await sessionGone(e)){sessionExpired();return false;}
+  toast('No se pudo guardar: '+tr(e),6000);return false;}}
+/* v4 · Detección de sesión caducada en uso (novedad 4.6) */
+async function sessionGone(e){
+ const k=errKind(e);
+ if(k==='session')return true;
+ if(k==='network')return false;
+ try{const {data,error}=await sb.auth.getSession();return !!error||!data||!data.session;}catch(_){return false;}}
+function sessionExpired(){
+ if(_resume)return;
+ /* v5 (1.5): la vista ajena se descarta; nunca se reanuda la bóveda ajena como propia */
+ if(_view){dropView();DATA=null;}
+ _resume={uid:USER&&USER.id};
+ clearTimeout(_projTimer);
+ document.querySelectorAll('.modal-bg.on').forEach(m=>m.classList.remove('on'));
+ $('app').classList.remove('active');
+ try{sb.auth.signOut({scope:'local'}).catch(()=>{});}catch(_){}
+ showLogin();$('liEmail').value=(USER&&USER.email)||$('liEmail').value;$('liPass').value='';
+ screen('scr-auth');showErr('authErr',MSG_EXPIRED_KEEP);}
 async function enterApp(){
  ensureProj();
  screen(null);$('app').classList.add('active');
@@ -548,7 +877,7 @@ function switchTab(id){
  else if(id==='historial'){renderCloseList();drawWidget('cvSerie',drawSerie);drawWidget('cvReturns',drawReturns);}
  else if(id==='objetivos')renderGoalsBitacora();
  else if(id==='ajustes')renderSettings();}
-async function doLogout(){await sb.auth.signOut();location.reload();}
+async function doLogout(){_resume=null;await localSignOut();location.reload();}
 
 /* ============ CÁLCULOS ============ */
 const sumPos=()=>DATA.positions.reduce((a,p)=>a+p.val,0);
@@ -725,9 +1054,9 @@ function drawReturns(cv){
  const Y=v=>mt+(H-mt-mb)*(1-(v-lo)/(hi-lo));
  ctx.strokeStyle='#8FA3BF';ctx.beginPath();ctx.moveTo(ml,Y(0));ctx.lineTo(W-mr,Y(0));ctx.stroke();
  ctx.fillStyle='#55606E';ctx.font='11px Calibri, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
- if(Math.abs(Y(hi)-Y(0))>=14)ctx.fillText(pct(hi,true),ml-8,Y(hi));
- if(Math.abs(Y(lo)-Y(0))>=14)ctx.fillText(pct(lo),ml-8,Y(lo));
- ctx.fillText(pct(0),ml-8,Y(0));
+ if(Math.abs(Y(hi)-Y(0))>=14)ctx.fillText(axisPct(hi,true),ml-8,Y(hi));
+ if(Math.abs(Y(lo)-Y(0))>=14)ctx.fillText(axisPct(lo),ml-8,Y(lo));
+ ctx.fillText(axisPct(0),ml-8,Y(0));
  rets.forEach((r,i)=>{
   ctx.fillStyle=r.r>=0?'#3A7D44':'#B3402E';
   const w=Math.min(18,(W-ml-mr)/n*0.7);
@@ -764,7 +1093,7 @@ function onProjInput(){
  if(isFinite(v('prChild')))P.perChild=Math.max(0,v('prChild'));
  if(isFinite(v('prHeirs')))P.heirs=Math.min(20,Math.max(1,Math.round(v('prHeirs'))));
  updateProjView();
- clearTimeout(_projTimer);_projTimer=setTimeout(()=>persistVault(),700);}
+ clearTimeout(_projTimer);_projTimer=setTimeout(()=>{_projTimer=null;persistVault();},700);}
 function updateProjView(){
  const P=DATA.proyecciones,C=netWorth(),s=projScenarios(),yr=projYear();
  $('projBase').innerHTML='Partida: patrimonio neto actual <b class="nw">'+eur(C)+'</b> · aportaciones vigentes <b class="nw">'+eur(sumMes())+' al mes</b>'+
@@ -795,11 +1124,14 @@ function updateProjView(){
   msg='<div class="msg-warn">El escenario base ('+'<b class="nw">'+eur(s.base)+'</b> en '+yr+') no alcanza la meta total de <b class="nw">'+eur(goal)+'</b>: desvío de <b class="nw">'+eur(goal-s.base)+'</b>. '+
    'Aportación mensual adicional necesaria para cerrarlo: <b class="nw">'+(need===null?'—':eur(need)+' al mes')+'</b> (redondeada al alza a múltiplos de 10'+NB+'€).</div>';}
  $('heirMsg').innerHTML=msg;}
-/* Etiqueta de eje compacta: miles («k») o millones («M») */
-function axisLbl(v){const a=Math.abs(v);
- if(a>=1e6)return nf(v/1e6)+NB+'M€';
- if(a>=1e3)return nf(v/1e3,0)+NB+'k€';
+/* Etiqueta de eje compacta en miles («k€»), siempre con cero decimales.
+   v3.2: se elimina el tramo «M€» (salía con dos decimales y rompía la
+   uniformidad del eje); por encima del millón se muestra p. ej. «1.250 k€». */
+function axisLbl(v){
+ if(Math.abs(v)>=1e3)return nf(v/1e3,0)+NB+'k€';
  return nf(v,0)+NB+'€';}
+/* v3.2: etiqueta de eje porcentual con cero decimales (drawReturns) */
+const axisPct=(v,sign)=>((sign&&v>0)?'+':'')+nf(v,0)+NB+'%';
 function drawProj(cv){
  const P=DATA.proyecciones,Y=P.years,y0=new Date().getFullYear();
  const H=280;
@@ -849,7 +1181,7 @@ function renderTables(){
  DATA.positions.forEach((p,i)=>{
   const ret=(p.inv>0&&p.val>0)?(p.val/p.inv-1)*100:null;
   const w=tp>0?p.val/tp*100:null;
-  h+='<tr><td>'+p.name+'</td><td><span class="tagpill" style="background:'+gColor(p.group)+'">'+gName(p.group)+'</span></td>'+
+  h+='<tr><td>'+tx(p.name)+'</td><td><span class="tagpill" style="background:'+gColor(p.group)+'">'+gName(p.group)+'</span></td>'+
    '<td class="num">'+eur(p.mes||0)+'</td><td class="num">'+eur(p.inv)+'</td><td class="num">'+eur(p.val)+'</td>'+
    '<td class="num '+(ret===null?'':(ret>=0?'pos':'neg'))+'">'+(ret===null?'—':pct(ret,true))+'</td>'+
    '<td class="num">'+(hasTer(p)?pct(p.ter):'—')+'</td>'+
@@ -860,11 +1192,11 @@ function renderTables(){
   '<td class="num">'+pct(100)+'</td><td></td></tr></tbody>';
  $('posTable').innerHTML=h;
  h='<thead><tr><th>Entidad</th><th class="num-h">Saldo</th><th></th></tr></thead><tbody>';
- DATA.cash.forEach((cc,i)=>{h+='<tr><td>'+cc.name+'</td><td class="num">'+eur(cc.val)+'</td><td>'+delBtn('delCash',i)+'</td></tr>';});
+ DATA.cash.forEach((cc,i)=>{h+='<tr><td>'+tx(cc.name)+'</td><td class="num">'+eur(cc.val)+'</td><td>'+delBtn('delCash',i)+'</td></tr>';});
  h+='<tr class="total"><td>Total liquidez</td><td class="num">'+eur(sumCash())+'</td><td></td></tr></tbody>';
  $('cashTable').innerHTML=h;
  h='<thead><tr><th>Concepto</th><th class="num-h">Capital pendiente</th><th class="num-h">Cuota/mes</th><th></th></tr></thead><tbody>';
- DATA.debts.forEach((d,i)=>{h+='<tr><td>'+d.name+'</td><td class="num">'+eur(d.val)+'</td><td class="num">'+eur(d.fee||0)+'</td><td>'+delBtn('delDebt',i)+'</td></tr>';});
+ DATA.debts.forEach((d,i)=>{h+='<tr><td>'+tx(d.name)+'</td><td class="num">'+eur(d.val)+'</td><td class="num">'+eur(d.fee||0)+'</td><td>'+delBtn('delDebt',i)+'</td></tr>';});
  h+='<tr class="total"><td>Total deuda</td><td class="num">'+eur(sumDebt())+'</td><td class="num">'+eur(sumFee())+'</td><td></td></tr></tbody>';
  $('debtTable').innerHTML=h;}
 /* v3: ISIN y TER */
@@ -876,12 +1208,17 @@ function terWeighted(){
  return den>0?num/den:null;}
 const readIsin=id=>$(id).value.trim().toUpperCase().replace(/\s+/g,'');
 const readTer=id=>{const s=$(id).value.trim();if(s==='')return null;const v=parseFloat(s);return isFinite(v)&&v>=0?v:null;};
+/* v3.2: feedback visual persistente (borde rojo + texto bajo el campo) */
+function checkIsinField(id){
+ const v=readIsin(id),bad=!!v&&!ISIN_RE.test(v);
+ $(id).classList.toggle('inp-bad',bad);$(id+'Hint').classList.toggle('on',bad);
+ return !bad;}
 const isinWarn=isin=>(isin&&!ISIN_RE.test(isin))?' Aviso: el ISIN «'+isin+'» no tiene el formato estándar (12 caracteres: 2 letras, 9 alfanuméricos y 1 dígito).':'';
 async function addPosition(){
  const n=$('posName').value.trim();if(!n){toast('Indique un nombre para la posición.');return;}
  const isin=readIsin('posIsin'),ter=readTer('posTer');
  DATA.positions.push({name:n,group:$('posGroup').value,inv:+$('posInv').value||0,val:+$('posVal').value||0,mes:+$('posMes').value||0,isin,ter});
- $('posName').value='';$('posInv').value='';$('posVal').value='';$('posMes').value='';$('posIsin').value='';$('posTer').value='';
+ $('posName').value='';$('posInv').value='';$('posVal').value='';$('posMes').value='';$('posIsin').value='';$('posTer').value='';checkIsinField('posIsin');
  renderTables();await persistVault();toast('Posición añadida.'+isinWarn(isin));}
 /* v3: modal de edición de posición */
 let _editIdx=null;
@@ -889,7 +1226,7 @@ function openEdit(i){
  const p=DATA.positions[i];if(!p)return;_editIdx=i;
  $('edName').value=p.name||'';$('edGroup').value=p.group||'otros';
  $('edInv').value=p.inv||0;$('edVal').value=p.val||0;$('edMes').value=p.mes||0;
- $('edIsin').value=p.isin||'';$('edTer').value=hasTer(p)?p.ter:'';
+ $('edIsin').value=p.isin||'';$('edTer').value=hasTer(p)?p.ter:'';checkIsinField('edIsin');
  $('editModal').classList.add('on');$('edName').focus();}
 function closeEdit(){$('editModal').classList.remove('on');_editIdx=null;}
 async function saveEdit(){
@@ -907,7 +1244,7 @@ async function delDebt(i){DATA.debts.splice(i,1);renderTables();await persistVau
 function renderMovs(){
  let h='<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="num-h">Importe</th><th></th></tr></thead><tbody>';
  [...DATA.movimientos].sort((a,b)=>a.date<b.date?1:-1).forEach((m)=>{
-  h+='<tr><td>'+m.date+'</td><td>'+m.type+'</td><td>'+m.desc+'</td><td class="num '+(m.amt>=0?'pos':'neg')+'">'+eur(m.amt,true)+'</td><td>'+delBtn('delMov',DATA.movimientos.indexOf(m))+'</td></tr>';});
+  h+='<tr><td>'+tx(m.date)+'</td><td>'+tx(m.type)+'</td><td>'+tx(m.desc)+'</td><td class="num '+(m.amt>=0?'pos':'neg')+'">'+eur(m.amt,true)+'</td><td>'+delBtn('delMov',DATA.movimientos.indexOf(m))+'</td></tr>';});
  if(!DATA.movimientos.length)h+='<tr><td colspan="5" style="color:var(--slate)">Sin movimientos registrados.</td></tr>';
  $('movTable').innerHTML=h+'</tbody>';}
 async function addMov(){
@@ -921,13 +1258,13 @@ function renderGoalsBitacora(){
  let h='';
  if(!DATA.goals.length)h='<p class="small-note">Sin objetivos definidos todavía (hasta 7, opcionales).</p>';
  DATA.goals.forEach((g,i)=>{
-  h+='<div class="goal-item"><b>'+(i+1)+'.</b> '+g.text+
-   (g.amt?' · <b>'+eur(g.amt)+'</b>':'')+(g.deadline?' · Plazo: '+g.deadline:'')+
+  h+='<div class="goal-item"><b>'+(i+1)+'.</b> '+tx(g.text)+
+   (g.amt?' · <b>'+eur(g.amt)+'</b>':'')+(g.deadline?' · Plazo: '+tx(g.deadline):'')+
    ' <span style="float:right">'+delBtn('delGoal',i)+'</span></div>';});
  $('goalsList').innerHTML=h;
  let b='';
  [...DATA.bitacora].sort((a,c)=>a.date<c.date?1:-1).forEach(e=>{
-  b+='<div class="bitacora-entry"><div class="date">'+e.date+'</div>'+e.text+'</div>';});
+  b+='<div class="bitacora-entry"><div class="date">'+tx(e.date)+'</div>'+tx(e.text)+'</div>';});
  if(!DATA.bitacora.length)b='<p class="small-note">El cuaderno de bitácora irá recogiendo la valoración mensual de Lumo (máx. 10 líneas por cierre).</p>';
  $('bitList').innerHTML=b;}
 async function addGoal(){
@@ -945,7 +1282,7 @@ async function addBitacora(){
 /* ============ HISTORIAL ============ */
 function renderCloseList(){
  const cls=[...DATA.closings].sort((a,b)=>a.date<b.date?1:-1);
- $('closeList').innerHTML=cls.map(c=>'<li>▸ <b>'+c.date+'</b> · Cartera '+eur(c.portfolio)+' · Liquidez '+eur(c.cash)+' · Deuda '+eur(c.debt)+' · <b>Patrimonio neto '+eur(c.net)+'</b></li>').join('')||'<li style="color:var(--slate)">Sin cierres registrados.</li>';}
+ $('closeList').innerHTML=cls.map(c=>'<li>▸ <b>'+tx(c.date)+'</b> · Cartera '+eur(c.portfolio)+' · Liquidez '+eur(c.cash)+' · Deuda '+eur(c.debt)+' · <b>Patrimonio neto '+eur(c.net)+'</b></li>').join('')||'<li style="color:var(--slate)">Sin cierres registrados.</li>';}
 async function registerClosing(){
  const d=$('closeDate').value||new Date().toISOString().slice(0,10);
  if(DATA.closings.some(c=>c.date===d)){toast('Ya existe un cierre con esa fecha.');return;}
@@ -958,8 +1295,13 @@ async function registerClosing(){
 function renderSettings(){
  $('setInitials').value=(DATA.meta&&DATA.meta.initials)||'';
  $('setAge').value=(DATA.meta&&DATA.meta.age)||'';
- $('setRole').value=PROFILE.role==='advisor'?'Asesor (administrador)':'Titular';
- if(PROFILE.role==='advisor')loadAdvisorVaults();
+ /* v5: en la vista de asesorado, el perfil del titular (rol «Titular») */
+ $('setRole').value=_view?'Titular':(PROFILE.role==='advisor'?'Asesor (administrador)':'Titular');
+ /* v4 · Nota de transparencia (RGPD, deber de información) solo para titulares;
+    v5: oculta también en la vista de asesorado (va dirigida al titular) */
+ $('memberNote').style.display=(isAdvisor()||_view)?'none':'block';
+ if(_view)return; /* «Bóvedas asesoradas» oculta por body.ro: nada se carga */
+ if(isAdvisor())loadAdvisorVaults();
  else $('advisorBox').style.display='none';}
 async function saveMeta(){
  DATA.meta=DATA.meta||{};
@@ -976,38 +1318,344 @@ function exportVault(){
 async function restoreOctober(){
  if(!confirm('Esto SUSTITUIRÁ la bóveda actual por los datos de octubre 2026. ¿Continuar?'))return;
  const m={initials:(DATA.meta&&DATA.meta.initials)||'GP',age:(DATA.meta&&DATA.meta.age)||null};
- const pr=DATA.proyecciones?{...DATA.proyecciones}:null;
- DATA=seedData();DATA.meta=m;if(pr)DATA.proyecciones=pr;ensureProj();
+ /* v3.2: estado semilla completo; las proyecciones vuelven a PROJ_DEF
+    (seedData ya las trae). Solo se conserva el perfil (iniciales y edad). */
+ clearTimeout(_projTimer);
+ DATA=seedData();DATA.meta=m;DATA.proyecciones={...PROJ_DEF};ensureProj();
  if($('app').classList.contains('active')){
   $('hdrInitials').textContent=(m.initials||'GP').toUpperCase();
   switchTab($('tab-ajustes').classList.contains('on')?'ajustes':'resumen');}
  await persistVault();toast('Datos de octubre 2026 restaurados.');}
+/* ===== v5 · BÓVEDAS ASESORADAS: filas compactas (5.1 y 5.2) =====
+   Desaparece la ficha resumida de la v4. Titular: nombre (o correo; «Usuario» si
+   vacío), etiqueta «Titular», «Abrir en modo lectura» y «Eliminar asesorado».
+   Otro asesor: etiqueta «Asesor», «Bóveda cifrada: no legible», sin botones.
+   El contenido procede de otros usuarios: se escapa siempre antes de insertarlo. */
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* v5: en la vista de asesorado todo texto de la bóveda ajena se escapa al pintarse;
+   fuera de ella, comportamiento de la v4 intacto */
+const tx=v=>_view?esc(v):v;
+const advName=p=>(p&&p.display_name&&String(p.display_name).trim())||'Usuario';
 async function loadAdvisorVaults(){
- $('advisorList').innerHTML='<p class="small-note">Cargando…</p>';
- const {data:profs,error}=await sb.from('profiles').select('id,display_name,role').neq('id',USER.id);
- if(error){$('advisorList').innerHTML='<p class="small-note">Error al listar usuarios.</p>';return;}
- if(!profs||!profs.length){$('advisorList').innerHTML='<p class="small-note">Todavía no hay bóvedas asesoradas. Cuando un familiar cree su cuenta y su bóveda, aparecerá aquí en modo de solo lectura.</p>';return;}
- let out='';
- for(const p of profs){
-  const {data:vrow}=await sb.from('vault_records').select('payload').eq('owner_id',p.id).maybeSingle();
-  out+='<div class="sec-title">'+(p.display_name||'Usuario')+' · '+(p.role==='advisor'?'asesor':'titular')+'</div>';
-  if(!vrow||!vrow.payload){out+='<p class="small-note">Sin bóveda todavía.</p>';continue;}
-  let env=vrow.payload;if(typeof env==='string'){try{env=JSON.parse(env);}catch(_){env=null;}}
-  if(env&&env.enc){out+='<p class="small-note">Bóveda cifrada de extremo a extremo: no legible para el asesor (privacidad reforzada).</p>';continue;}
-  if(env&&env.data){
-   const d=env.data;
-   const pv=(d.positions||[]).reduce((a,x)=>a+x.val,0);
-   const cs=(d.cash||[]).reduce((a,x)=>a+x.val,0);
-   const dt=(d.debts||[]).reduce((a,x)=>a+x.val,0);
-   out+='<p style="font-size:13px">Cartera <b>'+eur(pv)+'</b> · Liquidez <b>'+eur(cs)+'</b> · Deuda <b>'+eur(dt)+'</b> · Patrimonio neto <b>'+eur(pv+cs-dt)+'</b> · Cierres: '+((d.closings||[]).length)+'</p>';
-   out+='<table class="data"><thead><tr><th>Activo</th><th class="num-h">Valor</th></tr></thead><tbody>'+
-    (d.positions||[]).map(x=>'<tr><td>'+x.name+'</td><td class="num">'+eur(x.val)+'</td></tr>').join('')+'</tbody></table>';}
-  else out+='<p class="small-note">Bóveda en formato no reconocido.</p>';}
- $('advisorList').innerHTML=out;}
+ const box=$('advisorList');box.innerHTML='<p class="small-note">Cargando…</p>';
+ try{
+  const {data:profs,error}=await sb.from('profiles').select('id,display_name,role').neq('id',USER.id);
+  if(error)throw error;
+  _advList=profs||[];
+  if(!_advList.length){box.innerHTML='<p class="small-note">Todavía no hay bóvedas asesoradas. Cuando un familiar cree su cuenta y su bóveda, aparecerá aquí en modo de solo lectura.</p>';return;}
+  box.innerHTML=_advList.map((p,i)=>{
+   if(p.role==='advisor')return '<div class="adv-row"><span class="adv-name">'+esc(advName(p))+'</span><span class="tagpill" style="background:var(--navy)">Asesor</span><span class="small-note" style="margin:0 0 0 auto">Bóveda cifrada: no legible.</span></div>';
+   return '<div class="adv-row"><span class="adv-name">'+esc(advName(p))+'</span><span class="tagpill" style="background:var(--mid)">Titular</span>'+
+    '<span class="adv-acts"><button class="btn-primary btn-sm" onclick="openView('+i+')">Abrir en modo lectura</button>'+
+    '<button class="btn-danger btn-sm" onclick="askDelete('+i+')">Eliminar asesorado</button></span></div>';}).join('');}
+ catch(e){
+  if(errKind(e)==='session'){sessionExpired();return;}
+  box.innerHTML='<p class="small-note">No se pudo cargar el listado de bóvedas asesoradas: '+esc(tr(e))+'</p>';}}
+
+/* ===== v5 · Diálogo genérico con botones (nunca fallo silencioso) ===== */
+function showDlg(title,msg,sub,btns,focusIdx){
+ $('dlgTitle').textContent=title;$('dlgMsg').textContent=msg;
+ $('dlgSub').textContent=sub||'';$('dlgSub').style.display=sub?'block':'none';
+ const box=$('dlgBtns');box.innerHTML='';const els=[];
+ btns.forEach(([label,cls,fn])=>{const b=document.createElement('button');b.className=cls;b.textContent=label;
+  b.onclick=()=>{$('dlgModal').classList.remove('on');if(fn)fn();};box.appendChild(b);els.push(b);});
+ $('dlgModal').classList.add('on');
+ const f=els[focusIdx||0];if(f)f.focus();}
+const closeDlg=()=>$('dlgModal').classList.remove('on');
+
+/* ===== v5 · NOVEDAD 5.1 · VISTA COMPLETA DEL ASESORADO EN MODO LECTURA =====
+   Capa de visualización sobre el listado de bóvedas asesoradas: no toca la sesión,
+   el MFA ni la fila del asesor. Al entrar se descartan de memoria su bóveda y su
+   clave; al salir se descarta la bóveda ajena y se pide de nuevo su contraseña maestra. */
+const RO_INPUTS=['prRate','prYears','prExtra','prChild','prHeirs','setInitials','setAge'];
+const RO_WIPE=['sumCards','lgGroups','goalsList','bitList','posTable','cashTable','debtTable','projBase','projCards','lgProj','heirCards','heirBarTxt','heirMsg','movTable','closeList','serieNote','retNote'];
+function wipeViews(){
+ RO_WIPE.forEach(id=>{const e=$(id);if(e)e.innerHTML='';});
+ $('heirBar').style.width='0';
+ ['cvGroups','cvComp','cvProj','cvSerie','cvReturns'].forEach(id=>{const cv=$(id);if(!cv)return;
+  cv._pts=null;cv._proj=null;const c=cv.getContext('2d');if(c){c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cv.width,cv.height);}});
+ RO_INPUTS.forEach(id=>{$(id).value='';});
+ $('tip').style.display='none';}
+function dropView(){
+ if(!_view&&!document.body.classList.contains('ro'))return;
+ if(_view&&DATA===_view.data)DATA=null;
+ _view=null;
+ document.body.classList.remove('ro');$('roBanner').textContent='';$('roBanner').title='';
+ RO_INPUTS.forEach(id=>{$(id).disabled=false;});
+ wipeViews();}
+function normView(d){
+ ['positions','cash','debts','movimientos','goals','bitacora','closings'].forEach(k=>{if(!Array.isArray(d[k]))d[k]=[];});
+ if(!d.meta||typeof d.meta!=='object')d.meta={initials:'',age:null};
+ return d;}
+async function openView(i){
+ const p=_advList[i];
+ if(_view||!p||p.role!=='member'||!isAdvisor()||_viewBusy)return;
+ _viewBusy=true;
+ try{
+  /* Autoguardado diferido pendiente de SU bóveda: se completa antes de abrir la vista */
+  if(_projTimer){clearTimeout(_projTimer);_projTimer=null;
+   if(!(await persistVault())){toast('No se abre la vista del asesorado: antes deben guardarse sus propios cambios pendientes. Reintente.',6000,true);return;}}
+  let row;
+  try{const r=await sb.from('vault_records').select('payload').eq('owner_id',p.id).maybeSingle();if(r.error)throw r.error;row=r.data;}
+  catch(e){
+   if(errKind(e)==='session'){sessionExpired();return;}
+   showDlg('No se pudo abrir la vista del asesorado',tr(e)+' No se ha modificado ningún dato.',advName(p),[['Reintentar','btn-primary',()=>openView(i)],['Cancelar','btn-secondary',null]]);return;}
+  if(!row||!row.payload){toast('Este titular todavía no tiene bóveda: no hay datos que mostrar.',6000,true);return;}
+  const env=parseEnv(row.payload);
+  if(!env||env.enc||!env.data||typeof env.data!=='object'||Array.isArray(env.data)){
+   toast(env&&env.enc?'Bóveda cifrada: no legible.':'Bóveda en formato no reconocido: no puede mostrarse.',6000,true);return;}
+  /* Copia de trabajo separada (copia profunda): nada la enlaza con el servidor */
+  const d=normView(JSON.parse(JSON.stringify(env.data)));
+  clearTimeout(_projTimer);_projTimer=null;
+  closeDlg();
+  /* Se descartan de memoria la bóveda y la clave del asesor (se pedirán al volver) */
+  DATA=null;masterKey=null;_pendingRow=null;_newSalt=null;_migrateData=null;
+  _view={id:p.id,name:advName(p),data:d};DATA=d;
+  document.body.classList.add('ro');
+  RO_INPUTS.forEach(id=>{$(id).disabled=true;});
+  $('roBanner').textContent='Vista de asesorado · SOLO LECTURA — '+_view.name;
+  $('roBanner').title=$('roBanner').textContent;
+  enterApp();
+  window.scrollTo(0,0);}
+ finally{_viewBusy=false;}}
+/* «Volver a mi panel»: MFA ya verificado (no se repite); contraseña maestra sí */
+function exitView(){
+ if(!_view)return;
+ document.querySelectorAll('.modal-bg.on').forEach(m=>m.classList.remove('on'));
+ dropView();DATA=null;masterKey=null;
+ $('app').classList.remove('active');
+ loadVault();}
+
+/* ===== v5 · NOVEDAD 5.2 · ELIMINACIÓN TOTAL DE UN ASESORADO («Camino A») =====
+   Candado 1: contraseña maestra verificada contra SU bóveda (PBKDF2 + AES-GCM, como
+   al iniciar sesión; la clave derivada se descarta). Candado 2: confirmación expresa.
+   Ejecución vía RPC delete_advisee (Anexo A) y verificación releyendo el servidor. */
+function askDelete(i){
+ const p=_advList[i];
+ if(_view||!p||p.role!=='member'||!isAdvisor())return;
+ _del={id:p.id,name:advName(p)};
+ $('delPassName').textContent=_del.name;$('delPass').value='';hideErr('delPassErr');
+ $('delPassBtn').textContent='Continuar';
+ $('delPassModal').classList.add('on');$('delPass').focus();}
+function cancelDelete(){$('delPassModal').classList.remove('on');$('delPass').value='';_del=null;}
+async function delCheckPass(){
+ if(!_del||_delBusy)return;
+ hideErr('delPassErr');
+ const pw=$('delPass').value;
+ if(!pw){showErr('delPassErr','Introduzca su contraseña maestra.');return;}
+ _delBusy=true;
+ try{
+  let row;
+  try{const r=await sb.from('vault_records').select('payload,salt').eq('owner_id',USER.id).maybeSingle();if(r.error)throw r.error;row=r.data;}
+  catch(e){
+   if(errKind(e)==='session'){cancelDelete();sessionExpired();return;}
+   showErr('delPassErr','No se pudo comprobar la contraseña maestra: '+tr(e)+' No se ha borrado nada.');$('delPassBtn').textContent='Reintentar';return;}
+  const env=row&&parseEnv(row.payload);
+  if(!env||!env.enc||!env.iv||!env.ct||!row.salt){showErr('delPassErr','No se encontró su bóveda cifrada para verificar la contraseña. No se ha borrado nada.');return;}
+  let ok=false;
+  try{const key=await deriveKey(pw,b64u.d(row.salt));await decJSON(env,key);ok=true;}catch(_){ok=false;}
+  $('delPass').value='';
+  if(!ok){showErr('delPassErr','Contraseña maestra incorrecta. No se ha borrado nada.');$('delPassBtn').textContent='Continuar';$('delPass').focus();return;}
+  $('delPassModal').classList.remove('on');
+  const t=_del;
+  showDlg('Confirmar eliminación','¿Está seguro de eliminar este asesorado? Esta acción NO se puede deshacer y borrará permanentemente todos sus datos.',t.name,
+   [['Cancelar','btn-secondary',()=>{_del=null;}],['Eliminar definitivamente','btn-danger',runDelete]],0);}
+ finally{_delBusy=false;}}
+const isRpcMissing=e=>{const c=String((e&&e.code)||'').toUpperCase(),m=String((e&&e.message)||'').toLowerCase();
+ return c==='PGRST202'||c==='42883'||(m.includes('delete_advisee')&&(m.includes('could not find')||m.includes('does not exist')));};
+async function adviseeState(id){
+ const v=await sb.from('vault_records').select('owner_id').eq('owner_id',id).maybeSingle();if(v.error)throw v.error;
+ const p=await sb.from('profiles').select('id').eq('id',id).maybeSingle();if(p.error)throw p.error;
+ return {vault:!!v.data,profile:!!p.data};}
+async function runDelete(){
+ const t=_del;if(!t||_view||_delBusy)return;
+ _delBusy=true;
+ try{
+  const retry=[['Reintentar','btn-primary',runDelete],['Cancelar','btn-secondary',()=>{_del=null;loadAdvisorVaults();}]];
+  let rpcErr=null;
+  try{const {error}=await sb.rpc('delete_advisee',{p_target:t.id});if(error)rpcErr=error;}catch(e){rpcErr=e;}
+  if(rpcErr&&isRpcMissing(rpcErr)){
+   showDlg('Falta la función de eliminación en Supabase','La función delete_advisee no está instalada en su proyecto de Supabase. Ejecute una sola vez el SQL del Anexo A (documentado en el registro de cambios v5 al final de este archivo) en Supabase → SQL Editor y pulse «Reintentar». No se ha borrado nada.',t.name,retry);return;}
+  if(rpcErr&&errKind(rpcErr)==='session'){_del=null;sessionExpired();return;}
+  /* Nunca se da por hecho el éxito: se relee el estado real en el servidor */
+  let st;
+  try{st=await adviseeState(t.id);}
+  catch(e){
+   if(errKind(e)==='session'){_del=null;sessionExpired();return;}
+   showDlg('No se pudo comprobar la eliminación',(rpcErr?'Error al eliminar: '+tr(rpcErr)+' ':'')+'No se ha podido verificar el estado en el servidor: '+tr(e)+' Pulse «Reintentar».',t.name,retry);return;}
+  if(st.vault||st.profile){
+   showDlg('No se pudo eliminar el asesorado',(rpcErr?tr(rpcErr):'El servidor no ha confirmado el borrado.')+' Sus datos siguen intactos en el servidor: no se ha borrado nada.',t.name,retry);return;}
+  _del=null;
+  toast('Asesorado eliminado. Todos sus datos han sido borrados.',6000,true);
+  $('delDoneModal').classList.add('on');
+  loadAdvisorVaults();}
+ finally{_delBusy=false;}}
+
+/* ===== v4 · ARRANQUE Y REANUDACIÓN DE SESIÓN (novedad 4.7) =====
+   AAL2 completado → bóveda (contraseña maestra si asesor; directa si titular);
+   MFA pendiente → scr-mfa; sin sesión → login; sesión caducada → login con aviso. */
+async function boot(){
+ if(!sb){showErr('authErr',NO_SB);return;}
+ if(_hadSession)showInfo('authErr','Comprobando su sesión…');
+ try{
+  const {data,error}=await sb.auth.getSession();
+  if(error||!data||!data.session){
+   if(error&&errKind(error)==='network'){showErr('authErr',ERR_ES.network);return;}
+   if(error||_hadSession){try{await sb.auth.signOut({scope:'local'});}catch(_){}showErr('authErr',MSG_EXPIRED);return;}
+   hideErr('authErr');return;}
+  hideErr('authErr');
+  await afterAuth();}
+ catch(e){flowErr(tr(e));}}
+boot();
 </script>
 </body>
 <!-- =====================================================================
 REGISTRO DE CAMBIOS
+v5 (revisión R1) · 04/11/2026 · conforme al pliego técnico v5-R1, construida desde la v4
+ · NOVEDAD 5.1 · VISTA COMPLETA DEL ASESORADO EN MODO LECTURA.
+   - Ajustes → «Bóvedas asesoradas»: DESAPARECE la ficha resumida de la v4
+     (Cartera/Liquidez/Deuda/Patrimonio neto/Cierres y tabla de posiciones).
+     Cada titular se muestra como fila compacta: display_name (correo guardado
+     en el alta; «Usuario» si vacío), etiqueta «Titular», botón «Abrir en modo
+     lectura» y, junto a él, «Eliminar asesorado». Las filas de OTROS ASESORES:
+     etiqueta «Asesor», aviso «Bóveda cifrada: no legible» y sin botones.
+   - «Abrir en modo lectura»: lee la bóveda en claro del titular, crea una
+     COPIA PROFUNDA de trabajo separada (_view.data) y muestra la aplicación
+     completa tal cual la ve el titular: las 7 pestañas (Resumen con sus 6
+     tarjetas, Objetivos y Recomendaciones, Cartera, Proyecciones y Sucesión,
+     Movimientos, Historial y Ajustes), mismos cálculos, gráficos (redibujado
+     al redimensionar y al cambiar de pestaña), tooltips y formato numérico.
+   - Modo estanco (clase body.ro): se OCULTAN todos los controles de escritura
+     (✎, ✕, altas de posición, liquidez, deuda, objetivos, bitácora y
+     movimientos, «Registrar cierre», «Guardar perfil», Exportar, Restaurar y
+     «Bóvedas asesoradas»). persistVault() queda bloqueado durante la vista y
+     el autoguardado diferido de proyecciones se cancela.
+   - Concreciones aprobadas: parámetros de Proyecciones y Sucesión y del Perfil
+     visibles pero deshabilitados; escape de TODO el texto de la bóveda ajena
+     mientras dura el modo lectura (fuera de él, comportamiento v4 intacto);
+     un autoguardado de proyecciones pendiente del asesor se completa ANTES de
+     abrir la vista (si falla, no se abre y se avisa); banner y botón en una
+     segunda línea de la cabecera en pantallas estrechas.
+   - Al entrar se descartan de memoria la bóveda y la clave del asesor. Banner
+     fijo «Vista de asesorado · SOLO LECTURA — [Nombre del titular]» con
+     CORRECCIÓN DE CONTRASTE: texto azul marino (#16294B) en negrita sobre azul
+     cielo (#A8C6E8). Botón «Volver a mi panel»: descarta íntegramente la vista
+     ajena (datos, tablas, gráficos, tooltips, campos) y pide de nuevo la
+     contraseña maestra del asesor (el MFA no se repite).
+   - Sesión caducada durante la vista: la vista ajena se descarta; login con
+     aviso y, al volver, la propia bóveda del asesor (nunca la ajena).
+   - Error al leer la bóveda ajena: diálogo visible con «Reintentar».
+ · NOVEDAD 5.2 · ELIMINACIÓN TOTAL DE UN ASESORADO («Camino A»).
+   - Botón rojo «Eliminar asesorado» solo en filas de titulares; inexistente
+     en modo lectura.
+   - Paso 1: contraseña maestra del asesor verificada contra su bóveda con el
+     mismo PBKDF2 + descifrado AES-GCM del inicio de sesión (la clave derivada
+     se descarta); si es incorrecta, aviso visible y no se avanza.
+   - Paso 2: confirmación expresa con el nombre del titular; foco en «Cancelar».
+   - Paso 3: sb.rpc('delete_advisee',{p_target}) y VERIFICACIÓN releyendo
+     vault_records y profiles. Solo si ambas filas han desaparecido: toast
+     «Asesorado eliminado. Todos sus datos han sido borrados.» y modal
+     persistente de instrucciones, con la CORRECCIÓN 3 (párrafo «Importante —
+     realice el paso final lo antes posible»). Cualquier fallo (red, permisos,
+     verificación): diálogo visible con «Reintentar». RPC ausente: diálogo
+     específico que remite a este SQL.
+   - REQUISITO DE DESPLIEGUE · Ejecutar UNA SOLA VEZ en Supabase → SQL Editor,
+     antes del primer uso del borrado (si falta, la aplicación lo avisa al
+     intentar borrar; no bloquea nada más):
+
+     CREATE OR REPLACE FUNCTION public.delete_advisee(p_target UUID)
+     RETURNS VOID
+     LANGUAGE plpgsql
+     SECURITY DEFINER
+     SET search_path = public
+     AS $$
+     BEGIN
+     -- Solo un asesor autenticado puede ejecutar el borrado
+     IF NOT public.is_advisor() THEN
+     RAISE EXCEPTION 'Solo un asesor puede eliminar asesorados';
+     END IF;
+     -- El objetivo debe existir y ser rol member (nunca un advisor)
+     IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = p_target AND role = 'member') THEN
+     RAISE EXCEPTION 'El usuario indicado no es un titular asesorado';
+     END IF;
+     DELETE FROM vault_records WHERE owner_id = p_target;
+     DELETE FROM profiles WHERE id = p_target;
+     END;
+     $$;
+     REVOKE ALL ON FUNCTION public.delete_advisee(UUID) FROM PUBLIC;
+     GRANT EXECUTE ON FUNCTION public.delete_advisee(UUID) TO authenticated;
+
+ · CORRECCIÓN 2 · Nota de transparencia del titular: «Su asesor autorizado puede
+   consultar toda su aplicación en modo de solo lectura (Resumen, Objetivos,
+   Cartera, Proyecciones y Sucesión, Movimientos, Historial y Ajustes).»; oculta
+   mientras el asesor ve una bóveda ajena en modo lectura.
+ · Cabecera y título: «GPR Solutions · Plataforma Patrimonial v5».
+ · Sin cambios en criptografía, esquema, políticas RLS ni dependencias (única
+   dependencia externa: la CDN de Supabase existente).
+ · PENDIENTE PARA v6 (defecto heredado de la v4, NO corregido en esta versión):
+   en pantallas estrechas (~390 px) las etiquetas de valor de los gráficos del
+   Resumen pueden solaparse con las barras.
+v4 · 03/11/2026
+ · POLÍTICA DE DATOS (decisión del propietario · modelo de visibilidad
+   asesorada): se SUSTITUYE la política de cifrado de titulares de la v3.2.
+   Los titulares (rol member) vuelven a guardar su bóveda en claro
+   {enc:false, data} protegida por RLS, MFA y HTTPS, sin contraseña maestra;
+   la bóveda del asesor (rol advisor) CONSERVA el cifrado E2EE de la v3.2
+   (PBKDF2-SHA-256 100.000 iteraciones + AES-GCM 256, {enc:true, iv, ct} + sal).
+   persistVault() ramifica según PROFILE.role.
+ · Alta de titular nuevo: bóveda vacía (seedEmpty) creada en claro y entrada
+   directa. Titular con bóveda en claro (v2.3/v3.1): carga directa.
+ · Migración de titulares cifrados en pruebas v3.2: contraseña maestra una sola
+   vez con aviso, descifrado y reescritura en claro; si no descifra, botón
+   «Empezar con bóveda vacía» con confirmación destructiva explícita.
+ · «Bóvedas asesoradas» recupera el visor v3.1: Cartera, Liquidez, Deuda,
+   Patrimonio neto, número de cierres y tabla de posiciones; «Sin bóveda
+   todavía»; aviso «Bóveda cifrada: no legible» para bóvedas cifradas o de
+   otros asesores. Todo el contenido ajeno se escapa antes de pintarse.
+ · CORRECCIÓN DE DEFECTOS MFA DE LA v3.1 (novedades 4.5 y 4.6):
+   - mfa.enroll() incluye siempre factorType:'totp' (antes: 400 «factor_type
+     needs to be totp, phone, or webauthn» y ningún alta posible).
+   - Solo se usan factores TOTP verificados; las altas abandonadas
+     (unverified) se descartan antes de un alta nueva.
+   - Código QR del propio Supabase (data.totp.qr_code) en «Active su doble
+     factor», con la clave secreta como alternativa manual; se comprueba que
+     la URI otpauth:// del QR lleva la misma clave que el texto.
+   - Prohibido el fallo silencioso: los errores se muestran en la pantalla
+     ACTIVA; pantalla de incidencias con «Reintentar» y «Volver al inicio de
+     sesión» (lectura de bóveda, perfil); payload irreconocible exige
+     confirmación antes de sobrescribir; manejador global unhandledrejection;
+     aviso si la CDN de Supabase no carga; un error de lectura del perfil ya
+     no se interpreta como rol «member».
+   - Sesión caducada en uso: se conserva DATA en memoria, se pide nuevo acceso
+     y se reintenta el guardado al volver el mismo usuario (otro usuario
+     descarta esos datos sin escribirlos).
+ · Reanudación de sesión al cargar la página (getSession): AAL2 → bóveda;
+   MFA pendiente → scr-mfa; sin sesión → login; caducada → login con aviso.
+ · Mensajes de Supabase traducidos al castellano (credenciales, correo sin
+   confirmar, código MFA, límite de intentos, sesión caducada, red; resto con
+   texto genérico). Mensaje específico de correo sin confirmar y paso
+   siguiente tras el registro (confirmar correo o iniciar sesión).
+ · Nota de transparencia (RGPD) en Ajustes para titulares.
+ · Cabecera y título: «GPR Solutions · Plataforma Patrimonial v4».
+v3.2 · 03/11/2026
+ · Cifrado obligatorio para todos los roles: desaparece la persistencia en
+   claro ({enc:false}) de persistVault(); sin clave maestra no se sube nada.
+   El alta de un titular (rol member) sin bóveda exige contraseña maestra
+   (scr-master, doble entrada, mínimo 8 caracteres) y crea la bóveda vacía
+   ya cifrada (PBKDF2-SHA-256 100.000 iteraciones + AES-GCM 256, {enc:true}).
+ · Migración automática: una bóveda antigua en claro se detecta al abrir,
+   se pide definir contraseña maestra y la fila se reescribe cifrada con los
+   mismos datos; solo se entra en la aplicación si la reescritura se confirma.
+ · loadAdvisorVaults(): eliminada la lectura de bóvedas en claro; el asesor
+   solo ve el aviso de bóveda cifrada no legible.
+ · CAMBIO DE COMPORTAMIENTO · «Restaurar datos de octubre 2026» devuelve
+   ahora un estado semilla completo: también restablece DATA.proyecciones a
+   PROJ_DEF. Solo se conserva el perfil (iniciales y edad).
+ · ISIN: feedback visual persistente no bloqueante (borde rojo y aviso bajo el
+   campo) en el alta y en el modal de edición mientras no cumpla el patrón.
+ · Ejes de gráficos con cero decimales uniformes: drawReturns pasa de dos a
+   cero decimales (axisPct) y axisLbl suprime el tramo «M€» con decimales.
+ · toast() admite duración opcional (aviso de migración más visible).
 v3 · 03/11/2026
  · Nueva pestaña «Proyecciones y Sucesión» (4.ª, entre Cartera y Movimientos):
    simulador de tres escenarios (base ∓ 2,50 puntos) por interés compuesto
@@ -1027,8 +1675,6 @@ v3 · 03/11/2026
    contenedor (el lado derecho de los gráficos quedaba recortado) y
    drawReturns usa (v−lo) en la escala vertical (antes (v+lo)).
  · Cabecera con «· Plataforma Patrimonial v3» (oculto en pantallas estrechas).
- · DEUDA TÉCNICA: los titulares (rol member) aún guardan su bóveda en claro
-   ({enc:false}); se estudiará el cifrado para titulares en una futura versión.
 v3.1 · 03/11/2026 · unificación de espacio fino (U+202F) en canvas y reformulación de sufijos /mes
 v2.3 · Refinamiento de formato numérico y geometría de gráficos.
 ====================================================================== -->
